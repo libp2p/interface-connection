@@ -16,7 +16,7 @@ The primary goal of this module is to enable developers to pick, swap or upgrade
 
 Publishing a test suite as a module lets multiple modules all ensure compatibility since they use the same test suite.
 
-The API is presented with both Node.js and Go primitives, however, there is no actual limitations for it to be extended to any other language, pushing forward the cross compatibility and interop through diferent stacks.
+The API is presented with both Node.js and Go primitives, however there is no actual limitations for it to be extended to any other language, pushing forward the cross compatibility and interop through diferent stacks.
 
 ## Lead Maintainer
 
@@ -49,11 +49,12 @@ var tests = require('interface-connection/tests')
 var YourConnectionHandler = require('../src')
 
 var common = {
-  setup: function (t, cb) {
-    cb(null, YourConnectionHandler)
+  setup: function (transport) {
+    // create a pair of connections using the received transport for both endpoints
+    return ConnectionsPair
   },
-  teardown: function (t, cb) {
-    cb()
+  teardown: function () {
+    // clean up any resources created by setup()
   }
 }
 
@@ -66,39 +67,54 @@ tests(tape, common)
 
 # API
 
-A valid (read: that follows this abstraction) connection, must implement the following API.
+A valid connection (one that follows this abstraction) connection, must implement the following API:
 
 **Table of contents:**
 
 - type: `Connection`
-  - `conn.getObservedAddrs(callback)`
-  - `conn.getPeerInfo(callback)`
+  - `new Connection(connection [, wrappedConnection])`
+  - `Promise<Multiaddr[]> conn.getObservedAddrs()`
+  - `Promise<PeerInfo> conn.getPeerInfo()`
   - `conn.setPeerInfo(peerInfo)`
-  - `...`
+  - `Promise<> conn.close()`
+
+### Creating a connection instance
+
+- `JavaScript` - `const conn = new Connection(connection, wrappedConnection)`
+
+Creates a new Connection instance. `connection` is the object responsible for allowing to read or write data through the connection, while `wrappedConnection` consists on another connection that may be wrapped into the first one.
 
 ### Get the Observed Addresses of the peer in the other end
 
-- `JavaScript` - `conn.getObservedAddrs(callback)`
+- `JavaScript` - `conn.getObservedAddrs()`
 
 This method retrieves the observed addresses we get from the underlying transport, if any.
 
-`callback` should follow the follow `function (err, multiaddrs) {}`, where `multiaddrs` is an array of [multiaddr](https://github.com/multiformats/multiaddr).
+It should return a `Promise<multiaddrs>`, where `multiaddrs` is an array of [multiaddr](https://github.com/multiformats/multiaddr).
 
 ### Get the PeerInfo
 
-- `JavaScript` - `conn.getPeerInfo(callback)`
+- `JavaScript` - `conn.getPeerInfo()`
 
-This method retrieves the a Peer Info object that contains information about the peer that this conn connects to.
+This method retrieves the a Peer Info object, which contains information about the peer that this conn connects to.
 
-`callback` should follow the `function (err, peerInfo) {}` signature, where peerInfo is a object of type [Peer Info](https://github.com/libp2p/js-peer-info)
+It should return a `Promise<peerInfo>`, where peerInfo is a object of type [Peer Info](https://github.com/libp2p/js-peer-info)
 
 ### Set the PeerInfo
 
 - `JavaScript` - `conn.setPeerInfo(peerInfo)`
-j
-This method stores a reference to the peerInfo Object that contains information about the peer that this conn connects to.
 
-`peerInfo` is a object of type [Peer Info](https://github.com/diasdavid/js-peer-info)
+This method stores a reference to the peerInfo Object, which contains information about the peer that this conn connects to.
+
+It receives `peerInfo`, which is an object of type [Peer Info](https://github.com/libp2p/js-peer-info)
+
+### Close connection
+
+- `JavaScript` - `conn.close()`
+
+This method closes a connection with other peer.
+
+It returns a `Promise`.
 
 ---
 

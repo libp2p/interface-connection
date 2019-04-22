@@ -1,45 +1,56 @@
 'use strict'
 
-const defer = require('pull-defer/duplex')
+const errCode = require('err-code')
 
 module.exports = class Connection {
-  constructor (conn, info) {
+  constructor (connection, wrappedConnection) {
     this.peerInfo = null
-    this.conn = defer()
-
-    if (conn) {
-      this.setInnerConn(conn, info)
-    } else if (info) {
-      this.info = info
-    }
+    this.connection = connection
+    this.wrappedConnection = wrappedConnection
   }
 
   get source () {
-    return this.conn.source
+    return this.connection.source
   }
 
   get sink () {
-    return this.conn.sink
+    return this.connection.sink
   }
 
-  getPeerInfo (callback) {
-    if (this.info && this.info.getPeerInfo) {
-      return this.info.getPeerInfo(callback)
+  async getPeerInfo () {
+    if (this.wrappedConnection && this.wrappedConnection.getPeerInfo) {
+      return await this.wrappedConnection.getPeerInfo()
     }
 
     if (!this.peerInfo) {
-      return callback(new Error('Peer Info not set yet'))
+      throw errCode('Peer Info not set yet', 'ERR_NO_PEER_INFO')
     }
 
-    callback(null, this.peerInfo)
+    return this.peerInfo
   }
 
   setPeerInfo (peerInfo) {
-    if (this.info && this.info.setPeerInfo) {
-      return this.info.setPeerInfo(peerInfo)
+    if (this.wrappedConnection && this.wrappedConnection.setPeerInfo) {
+      return this.wrappedConnection.setPeerInfo(peerInfo)
     }
 
     this.peerInfo = peerInfo
+  }
+
+  async getObservedAddrs () {
+    if (this.wrappedConnection && this.wrappedConnection.getObservedAddrs) {
+      return await this.wrappedConnection.getObservedAddrs()
+    }
+
+    return []
+  }
+
+  async close () {
+    await this.connection.close()
+
+    if (this.wrappedConnection && this.wrappedConnection.close) {
+      await this.wrappedConnection.close()
+    }
   }
 
   getObservedAddrs (callback) {
@@ -47,14 +58,5 @@ module.exports = class Connection {
       return this.info.getObservedAddrs(callback)
     }
     callback(null, [])
-  }
-
-  setInnerConn (conn, info) {
-    this.conn.resolve(conn)
-    if (info) {
-      this.info = info
-    } else {
-      this.info = conn
-    }
   }
 }
