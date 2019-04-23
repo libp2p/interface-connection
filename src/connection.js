@@ -1,63 +1,44 @@
 'use strict'
 
-const errCode = require('err-code')
-
-module.exports = class Connection {
-  constructor (connection, wrappedConnection) {
-    this.peerInfo = null
-    this.connection = connection
-    this.wrappedConnection = wrappedConnection
+class Connection {
+  /**
+   * Creates an instance of a Connection.
+   * @param {stream} stream
+   * @param {PeerInfo} remotePeer
+   * @param {Multiaddr} multiaddr
+   * @memberof Connection
+   */
+  constructor (stream, remotePeer, multiaddr) {
+    this.stream = stream
+    this.remotePeer = remotePeer
+    this.multiaddr = multiaddr
+    this.timeline = {
+      openTs: Date.now(),
+      closeTs: undefined
+    }
   }
 
   get source () {
-    return this.connection.source
+    return this.stream.source
   }
 
   get sink () {
-    return this.connection.sink
+    return this.stream.sink
   }
 
-  getPeerInfo () {
-    if (this.wrappedConnection && this.wrappedConnection.getPeerInfo) {
-      return this.wrappedConnection.getPeerInfo()
-    }
-
-    if (!this.peerInfo) {
-      throw errCode('Peer Info not set yet', 'ERR_NO_PEER_INFO')
-    }
-
-    return this.peerInfo
+  get multiaddr () {
+    return this.multiaddr
   }
 
-  setPeerInfo (peerInfo) {
-    if (this.wrappedConnection && this.wrappedConnection.setPeerInfo) {
-      return this.wrappedConnection.setPeerInfo(peerInfo)
-    }
-
-    this.peerInfo = peerInfo
+  get peerInfo () {
+    return this.remotePeer
   }
 
-  getObservedAddrs () {
-    if (this.wrappedConnection && this.wrappedConnection.getObservedAddrs) {
-      return this.wrappedConnection.getObservedAddrs()
-    }
+  close () {
+    this.timeline.closeTs = Date.now()
 
-    return []
-  }
-
-  async close () {
-    await this.connection.close()
-
-    if (this.wrappedConnection && this.wrappedConnection.close) {
-      await this.wrappedConnection.close()
-    }
-  }
-
-  getObservedAddrs () {
-    if (this.info && this.info.getObservedAddrs) {
-      return this.info.getObservedAddrs()
-    }
-
-    return []
+    return this.stream.close()
   }
 }
+
+exports = module.exports = Connection

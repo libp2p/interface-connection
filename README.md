@@ -10,13 +10,13 @@ interface-connection
 [![Dependency Status](https://david-dm.org/libp2p/interface-connection.svg?style=flat-square)](https://david-dm.org/libp2p/interface-connection)
 [![js-standard-style](https://img.shields.io/badge/code%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/feross/standard)
 
-This is a test suite and interface you can use to implement a connection. A connection is understood as something that offers mechanism for writing and reading data, back pressure, half and full duplex streams. This module and test suite were heavily inspired by abstract-blob-store and interface-stream-muxer.
+This is a test suite and interface you can use to implement a connection. A connection is understood as something that offers a mechanism for writing and reading data, back pressure, half and full duplex streams. This module and test suite were heavily inspired by abstract-blob-store and interface-stream-muxer.
 
 The primary goal of this module is to enable developers to pick, swap or upgrade their connection without losing the same API expectations and mechanisms such as back pressure and the ability to half close a connection.
 
 Publishing a test suite as a module lets multiple modules all ensure compatibility since they use the same test suite.
 
-The API is presented with both Node.js and Go primitives, however there is no actual limitations for it to be extended to any other language, pushing forward the cross compatibility and interop through diferent stacks.
+The API is presented with both JS and Go primitives, however there is no actual limitations for it to be extended to any other language, pushing forward the cross compatibility and interop through diferent stacks.
 
 ## Lead Maintainer
 
@@ -35,30 +35,29 @@ The API is presented with both Node.js and Go primitives, however there is no ac
 
 # Badge
 
-Include this badge in your readme if you make a module that is compatible with the interface-connection API. You can validate this by running the tests.
+Include this badge in your readme if you make a module that is compatible with the `interface-connection` API. You can validate this by running the tests.
 
 ![](https://raw.githubusercontent.com/diasdavid/interface-connection/master/img/badge.png)
 
 # How to use the battery of tests
 
-## Node.js
+## JS
 
-```
-var tape = require('tape')
-var tests = require('interface-connection/tests')
-var YourConnectionHandler = require('../src')
+```js
+const test = require('interface-connection/test')
+const YourConnection = require('../src')
 
-var common = {
-  setup: function (transport) {
-    // create a pair of connections using the received transport for both endpoints
-    return ConnectionsPair
+const common = {
+  setup: function () {
+    return YourConnection
   },
   teardown: function () {
-    // clean up any resources created by setup()
+    // cleanup any resources created by setup()
+    return new Promise()
   }
 }
 
-tests(tape, common)
+test(common)
 ```
 
 ## Go
@@ -72,41 +71,48 @@ A valid connection (one that follows this abstraction), must implement the follo
 **Table of contents:**
 
 - type: `Connection`
-  - `new Connection(connection [, wrappedConnection])`
-  - `conn.getObservedAddrs()`
+  - `new Connection(stream)`
+  - `conn.multiaddr()`
   - `Promise<PeerInfo> conn.getPeerInfo()`
-  - `conn.setPeerInfo(peerInfo)`
+  - `conn.source()`
+  - `conn.sink()`
   - `Promise<> conn.close()`
 
 ### Creating a connection instance
 
-- `JavaScript` - `const conn = new Connection(connection, wrappedConnection)`
+- `JavaScript` - `const conn = new Connection(stream, remotePeer, multiaddr)`
 
-Creates a new Connection instance. `connection` is the object responsible for allowing to read or write data through the connection, while `wrappedConnection` consists on another connection that may be wrapped into the first one.
+Creates a new Connection instance.
 
-### Get the Observed Addresses of the peer in the other end
+`stream` is a streaming iterables duplex object responsible for allowing to read or write data through the connection.
+`remotePeer` is a [PeerInfo](https://github.com/libp2p/js-peer-info) instance of the remote peer.
+`multiaddr` is the [multiaddr](https://github.com/multiformats/multiaddr) address used to communicate with the remote peer.
 
-- `JavaScript` - `conn.getObservedAddrs()`
+### Get the multiaddr of the peer in the other end
 
-This method retrieves the observed addresses we get from the underlying transport, if any.
+- `JavaScript` - `conn.multiaddr`
 
-It should return an array of [multiaddr](https://github.com/multiformats/multiaddr).
+This method the [multiaddr](https://github.com/multiformats/multiaddr) address used to communicate with the remote peer.
 
 ### Get the PeerInfo
 
-- `JavaScript` - `conn.getPeerInfo()`
+- `JavaScript` - `conn.peerInfo`
 
-This method retrieves the Peer Info object, which contains information about the peer that this conn connects to.
+This method retrieves the Peer Info object, which contains information about the remote peer of the connection.
 
 It should return a `Promise<PeerInfo>`, which resolves to a [PeerInfo](https://github.com/libp2p/js-peer-info) object
 
-### Set the PeerInfo
+### Get a connection Source
 
-- `JavaScript` - `conn.setPeerInfo(peerInfo)`
+- `JavaScript` - `conn.source`
 
-This method stores a reference to the peerInfo Object, which contains information about the peer that this conn connects to.
+This getter returns the reference to the connection "source", which is an iterable object that can be consumed.
 
-It receives `peerInfo`, which is an object of type [Peer Info](https://github.com/libp2p/js-peer-info)
+### Get a connection data collector
+
+- `JavaScript` - `conn.sink`
+
+This getter returns the reference to the connection "sink", which is an iterator that consumes (or drains) a source. 
 
 ### Close connection
 

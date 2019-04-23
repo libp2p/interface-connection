@@ -32,8 +32,7 @@
   },
   "homepage": "https://github.com/libp2p/interface-connection",
   "dependencies": {
-    "err-code": "^1.1.2",
-    "pull-defer": "~0.2.3"
+    "err-code": "^1.1.2"
   },
   "devDependencies": {
     "aegir": "^18.2.2",
