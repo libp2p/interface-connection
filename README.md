@@ -98,7 +98,7 @@ It should return an array of [multiaddr](https://github.com/multiformats/multiad
 
 This method retrieves the Peer Info object, which contains information about the peer that this conn connects to.
 
-It should return a `Promise<peerInfo>`, where peerInfo is a object of type [Peer Info](https://github.com/libp2p/js-peer-info)
+It should return a `Promise<PeerInfo>`, which resolves to a [PeerInfo](https://github.com/libp2p/js-peer-info) object
 
 ### Set the PeerInfo
 
