@@ -17,9 +17,9 @@ module.exports = class Connection {
     return this.connection.sink
   }
 
-  async getPeerInfo () {
+  getPeerInfo () {
     if (this.wrappedConnection && this.wrappedConnection.getPeerInfo) {
-      return await this.wrappedConnection.getPeerInfo()
+      return this.wrappedConnection.getPeerInfo()
     }
 
     if (!this.peerInfo) {
@@ -37,9 +37,9 @@ module.exports = class Connection {
     this.peerInfo = peerInfo
   }
 
-  async getObservedAddrs () {
+  getObservedAddrs () {
     if (this.wrappedConnection && this.wrappedConnection.getObservedAddrs) {
-      return await this.wrappedConnection.getObservedAddrs()
+      return this.wrappedConnection.getObservedAddrs()
     }
 
     return []

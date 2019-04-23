@@ -67,7 +67,7 @@ tests(tape, common)
 
 # API
 
-A valid connection (one that follows this abstraction) connection, must implement the following API:
+A valid connection (one that follows this abstraction), must implement the following API:
 
 **Table of contents:**
 
@@ -96,7 +96,7 @@ It should return a `Promise<multiaddrs>`, where `multiaddrs` is an array of [mul
 
 - `JavaScript` - `conn.getPeerInfo()`
 
-This method retrieves the a Peer Info object, which contains information about the peer that this conn connects to.
+This method retrieves the Peer Info object, which contains information about the peer that this conn connects to.
 
 It should return a `Promise<peerInfo>`, where peerInfo is a object of type [Peer Info](https://github.com/libp2p/js-peer-info)
 
