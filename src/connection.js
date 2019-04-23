@@ -53,10 +53,11 @@ module.exports = class Connection {
     }
   }
 
-  getObservedAddrs (callback) {
+  getObservedAddrs () {
     if (this.info && this.info.getObservedAddrs) {
-      return this.info.getObservedAddrs(callback)
+      return this.info.getObservedAddrs()
     }
-    callback(null, [])
+
+    return []
   }
 }

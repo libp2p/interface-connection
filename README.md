@@ -73,7 +73,7 @@ A valid connection (one that follows this abstraction), must implement the follo
 
 - type: `Connection`
   - `new Connection(connection [, wrappedConnection])`
-  - `Promise<Multiaddr[]> conn.getObservedAddrs()`
+  - `conn.getObservedAddrs()`
   - `Promise<PeerInfo> conn.getPeerInfo()`
   - `conn.setPeerInfo(peerInfo)`
   - `Promise<> conn.close()`
@@ -90,7 +90,7 @@ Creates a new Connection instance. `connection` is the object responsible for al
 
 This method retrieves the observed addresses we get from the underlying transport, if any.
 
-It should return a `Promise<multiaddrs>`, where `multiaddrs` is an array of [multiaddr](https://github.com/multiformats/multiaddr).
+It should return an array of [multiaddr](https://github.com/multiformats/multiaddr).
 
 ### Get the PeerInfo
 
