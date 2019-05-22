@@ -32,11 +32,14 @@
   },
   "homepage": "https://github.com/libp2p/interface-connection",
   "dependencies": {
-    "err-code": "^1.1.2"
+    "abortable-iterator": "^2.0.0",
+    "class-is": "^1.1.0",
+    "err-code": "^1.1.2",
+    "mocha": "^6.1.4",
+    "multistream-select": "~0.14.4"
   },
   "devDependencies": {
-    "aegir": "^18.2.2",
-    "timed-tape": "~0.1.1"
+    "aegir": "^18.2.2"
   },
   "engines": {
     "node": ">=8.0.0",
