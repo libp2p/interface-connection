@@ -125,7 +125,7 @@ class Stream {
    */
   close () {
     if (this.timeline.close) {
-      throw errCode('the stream is already closed', 'ERR_STREAM_ALREADY_CLOSED')
+      return
     }
 
     this.timeline.close = Date.now()

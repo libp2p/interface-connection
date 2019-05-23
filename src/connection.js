@@ -186,16 +186,14 @@ class Connection {
    * @async
    */
   async close () {
-    if (this.status === STATUS.CLOSING) {
-      throw errCode('the connection is already being closed', 'ERR_CONNECTION_ALREADY_BEING_CLOSED')
-    }
-
     if (this.status === STATUS.CLOSED) {
-      throw errCode('the connection is already closed', 'ERR_CONNECTION_ALREADY_CLOSED')
+      return
     }
 
-    this.status = STATUS.CLOSING
-    this.timeline.close = Date.now()
+    if (this.status !== STATUS.CLOSING) {
+      this.status = STATUS.CLOSING
+      this.timeline.close = Date.now()
+    }
 
     // Close all streams
     await Promise.all(this._streams.map((stream) => stream.close()))
