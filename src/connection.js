@@ -1,5 +1,7 @@
 'use strict'
 
+const { Duplex } = require('stream')
+
 const PeerInfo = require('peer-info')
 const multiaddr = require('multiaddr')
 const multistream = require('multistream-select')
@@ -16,8 +18,10 @@ const defaultMaxNumberOfAttemptsForHasMultiplexer = 5
 
 /**
  * An implementation of the js-libp2p connection.
+ * This is an abstract duplex connection between two nodes and
+ * each transport must pipe its socket through this.
  */
-class Connection {
+class Connection extends Duplex {
   /**
    * Creates an instance of Connection.
    * @param {PeerInfo} peerInfo remote peer PeerInfo
@@ -25,6 +29,8 @@ class Connection {
    * @param {boolean} [isInitiator=true] peer initiated the connection
    */
   constructor (peerInfo, remoteMa, isInitiator = true) {
+    super()
+
     assert(PeerInfo.isPeerInfo(peerInfo), 'peerInfo must be an instance of PeerInfo')
     assert(multiaddr.isMultiaddr(remoteMa), 'remoteMa must be an instance of multiaddr')
     assert(typeof isInitiator === 'boolean', 'isInitiator must be a boolean')
@@ -190,15 +196,25 @@ class Connection {
       return
     }
 
-    if (this.status !== STATUS.CLOSING) {
-      this.status = STATUS.CLOSING
-      this.timeline.close = Date.now()
+    if (this._closing) {
+      return this._closing
     }
 
-    // Close all streams
-    await Promise.all(this._streams.map((stream) => stream.close()))
+    this.status = STATUS.CLOSING
 
+    // Close all streams
+    this._closing = await this._closeStreams()
+
+    this.timeline.close = Date.now()
     this.status = STATUS.CLOSED
+  }
+
+  /**
+   * Close all the streams associated with this connection.
+   * @return {Promise}
+   */
+  _closeStreams () {
+    return Promise.all(this._streams.map((stream) => stream.close()))
   }
 }
 
