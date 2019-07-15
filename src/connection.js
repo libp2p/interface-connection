@@ -118,7 +118,7 @@ class Connection extends Duplex {
    * Create a new stream from this connection
    * @param {string} protocol intended protocol for the stream
    * @param {object} [options={}] stream options
-   * @param {boolean} [options.signal=true] abortable signal
+   * @param {boolean} [options.abortable=true] abortable signal
    * @return {Stream} stream instance
    */
   async newStream (protocol, options = {}) {
@@ -203,7 +203,8 @@ class Connection extends Duplex {
     this.status = STATUS.CLOSING
 
     // Close all streams
-    this._closing = await this._closeStreams()
+    this._closing = this._closeStreams()
+    await this._closing
 
     this.timeline.close = Date.now()
     this.status = STATUS.CLOSED

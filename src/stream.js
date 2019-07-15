@@ -18,7 +18,7 @@ class Stream {
    * @param {Connection} connection connection associated with the stream
    * @param {boolean} [isInitiator=true] peer initiated the stream
    * @param {object} [options={}] stream options
-   * @param {boolean} [options.signal=true] abortable signal
+   * @param {boolean} [options.abortable=true] abortable signal
    * @memberof Stream
    */
   constructor (iterableDuplex, connection, isInitiator = true, options = {}) {
@@ -67,7 +67,7 @@ class Stream {
      * Stream options
      */
     this._options = {
-      signal: !(options.signal === false)
+      abortable: !(options.abortable === false)
     }
   }
 
@@ -77,10 +77,10 @@ class Stream {
    */
 
   /**
-   * Consume (or drain) a source.
+   * Drain a source.
    * @return {SinkIt}
    */
-  async sink () {
+  async drain () {
     if (this.timeline.close) {
       throw errCode('the stream is closed', 'ERR_STREAM_CLOSED')
     }

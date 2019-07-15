@@ -156,7 +156,7 @@ Create a new stream within the connection.
 
 `protocol` is the intended protocol to use. This is optional and may be `undefined`. Example: `/echo/1.0.0`
 `options` is an object containing the stream options.
-`options.signal` is a boolean for using the abortable signal. Default value: `true`.
+`options.abortable` is a boolean for using the abortable signal. Default value: `true`.
 
 It returns a `Promise` with the instance of the created `Stream`.
 
@@ -237,7 +237,7 @@ A valid stream (one that follows this abstraction), must implement the following
 - type: `Stream`
   - `new Stream()`
   - `stream.source()`
-  - `stream.sink()`
+  - `stream.drain()`
   - `stream.close()`
 
 It can be obtained as follows:
@@ -255,9 +255,8 @@ Creates a new Stream instance.
 `iterableDuplex` is a streaming iterable duplex object.
 `connection` is a reference to the connection associated with this stream.
 `isInitiator` is a `boolean` indicating whether the peer creating the Stream instance initiated the stream. Default value: `true`.
-
 `options` is an object containing the stream options.
-`options.signal` is a boolean for using the abortable signal. Default value: `true`.
+`options.abortable` is a boolean for using the abortable signal. Default value: `true`.
 
 #### Get a connection Source
 
@@ -267,9 +266,9 @@ This getter returns a reference to the connection "source", which is an iterable
 
 #### Get a connection data collector
 
-- `JavaScript` - `stream.sink`
+- `JavaScript` - `stream.drain`
 
-This getter returns a reference to the connection "sink", which is an iterator that consumes (or drains) a source. 
+This getter returns a reference to the connection "sink", which is an iterator that drains a source. 
 
 #### Close connection
 
