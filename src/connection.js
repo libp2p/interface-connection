@@ -1,7 +1,5 @@
 'use strict'
 
-const { Duplex } = require('stream')
-
 const PeerInfo = require('peer-info')
 const multiaddr = require('multiaddr')
 const multistream = require('multistream-select')
@@ -21,17 +19,13 @@ const defaultMaxNumberOfAttemptsForHasMultiplexer = 5
  * This is an abstract duplex connection between two nodes and
  * each transport must pipe its socket through this.
  */
-class Connection extends Duplex {
+class Connection {
   /**
    * Creates an instance of Connection.
-   * @param {PeerInfo} peerInfo remote peer PeerInfo
    * @param {multiaddr} remoteMa remote peer multiaddr
    * @param {boolean} [isInitiator=true] peer initiated the connection
    */
-  constructor (peerInfo, remoteMa, isInitiator = true) {
-    super()
-
-    assert(PeerInfo.isPeerInfo(peerInfo), 'peerInfo must be an instance of PeerInfo')
+  constructor (remoteMa, isInitiator = true) {
     assert(multiaddr.isMultiaddr(remoteMa), 'remoteMa must be an instance of multiaddr')
     assert(typeof isInitiator === 'boolean', 'isInitiator must be a boolean')
 
@@ -39,11 +33,6 @@ class Connection extends Duplex {
      * Connection identifier
      */
     this.id = (~~(Math.random() * 1e9)).toString(36) + Date.now()
-
-    /**
-     * Remote peer infos
-     */
-    this.peerInfo = peerInfo
 
     /**
      * Status of the connection
@@ -72,6 +61,11 @@ class Connection extends Duplex {
     this.role = isInitiator ? ROLE.INITIATOR : ROLE.RESPONDER
 
     /**
+     * Remote peer infos
+     */
+    this.peerInfo = undefined
+
+    /**
      * Reference of the multiplexer being used
      */
     this.multiplexer = undefined
@@ -90,6 +84,14 @@ class Connection extends Duplex {
      * User provided tags
      */
     this.tags = []
+  }
+
+  /**
+   * Get observed address from the underlying transport
+   * @return {multiaddr} remote peer multiaddr
+   */
+  getObservedAddrs () {
+    return this.endpoints.remote
   }
 
   /**
@@ -112,6 +114,16 @@ class Connection extends Duplex {
     assert(multiaddr.isMultiaddr(ma), 'ma must be an instance of multiaddr')
 
     this.endpoints.local = ma
+  }
+
+  /**
+   * Set remote peer info.
+   * @param {PeerInfo} peerInfo remote peer PeerInfo
+   */
+  setPeerInfo (peerInfo) {
+    assert(PeerInfo.isPeerInfo(peerInfo), 'peerInfo must be an instance of PeerInfo')
+
+    this.peerInfo = peerInfo
   }
 
   /**
