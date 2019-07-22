@@ -1,7 +1,6 @@
 'use strict'
 
 const abortable = require('abortable-iterator')
-const Connection = require('./connection')
 const { ROLE } = require('./types')
 const withIs = require('class-is')
 
@@ -22,7 +21,6 @@ class Stream {
    * @memberof Stream
    */
   constructor (iterableDuplex, connection, isInitiator = true, options = {}) {
-    assert(Connection.isConnection(connection), 'connection must be an instance of Connection')
     assert(typeof isInitiator === 'boolean', 'isInitiator must be a boolean')
 
     /**

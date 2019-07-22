@@ -49,15 +49,46 @@ Before creating a connection from a transport compatible with `libp2p` it is imp
 - **connection**: the abstract libp2p duplex connection between two nodes. The transport must pipe the `socket` through the connection.
 - **stream**: a single duplex channel of the `connection`. Each connection may have many streams.
 
-A connection stands for the libp2p communication duplex layer between two nodes. It is **not** the underlying raw transport duplex layer (socket), such as a TCP socket, but an abstracted duplex layer that sits on top of the raw socket.
+A connection stands for the libp2p communication duplex layer between two nodes. It is **not** the underlying raw transport duplex layer (socket), such as a TCP socket, but an abstracted layer that sits on top of the raw socket.
 
-When a libp2p transport creates its socket, a new `connection` instance should be created and the transport should **pipe** both input and output of the socket through this `connection`, i.e. `pipe(socket, connection, socket)`.
+When a libp2p transport creates is socket, a new instance should be created by extending the `connection` from `interface-connection` and transforming it into an iterable.
 
-The transport must handle the translation of cleanup from the socket to the connection. That is, the errors, resets or closes on the socket **must** be passed to the connection. In the same way, the transport **must** map these actions from the `connection` to the socket. This helps ensuring that the transport is responsible for socket management, while also allowing the application layer to handle the connection management.
+This helps ensuring that the transport is responsible for socket management, while also allowing the application layer to handle the connection management.
 
 ```js
-const pipe = require('it-pipe')
+const abortable = require('abortable-iterator')
+
 const { Connection } = require('interface-connection')
+
+class Libp2pSocket extends Connection {
+  constructor (rawSocket, ma, opts = {}) {
+    super(ma, opts)
+
+    this._rawSocket = rawSocket
+
+    this.sink = this._sink(opts)
+    this.source = opts.signal ? abortable(rawSocket.source, opts.signal) : rawSocket.source
+  }
+
+  _sink (opts) {
+    return async (source) => {
+      try {
+        await this._rawSocket.sink(abortable(source, opts.signal))
+      } catch (err) {
+        // Re-throw non-aborted errors
+        if (err.type !== 'aborted') throw err
+        // Otherwise, this is fine...
+        await this._rawSocket.close()
+      }
+    }
+  }
+}
+
+module.exports = Libp2pSocket
+```
+
+```js
+const Libp2pSocket = require('./socket')
 
 class Transport {
   async dial () {
@@ -65,13 +96,7 @@ class Transport {
 
     // create the raw socket and the connection
     const socket = await this._connect()
-    const conn = new Connection(remotePeerInfo, remoteMa)
-
-    // pipe the socket through the connection (if necessary include a conversion to iterable duplex streams)
-    pipe(socket, conn, socket)
-
-    // bind the necessary handlers to update state changes (error, close, reset, ...)
-    // ...
+    const conn = new libp2pSocket(socket, remoteMa, {})
 
     return conn
   }
@@ -108,7 +133,8 @@ describe('your connection', () => {
 A valid connection (one that follows this abstraction), must implement the following API:
 
 - type: `Connection`
-  - `new Connection(remotePeerInfo, remoteMa, isInitiator)`
+  - `new Connection(remoteMa, isInitiator)`
+  - `conn.getObservedAddrs()`
   - `conn.upgraded(multiplexer, encryption)`
   - `conn.setLocalAddress(multiaddr)`
   - `Promise<Stream> conn.newStream(options)`
@@ -123,13 +149,20 @@ const { Connection } = require('interface-connection')
 
 #### Creating a connection instance
 
-- `JavaScript` - `const conn = new Connection(remotePeerInfo, remoteMa, isInitiator = true)`
+- `JavaScript` - `const conn = new Connection(remoteMa, isInitiator = true)`
 
 Creates a new Connection instance.
 
-`remotePeerInfo` is a [PeerInfo](https://github.com/libp2p/js-peer-info) instance of the remote peer.
 `remoteMa` is the [multiaddr](https://github.com/multiformats/multiaddr) address used to communicate with the remote peer.
 `isInitiator` is a `boolean` indicating whether the peer creating the Connection instance initiated the connection. Default value: `true`.
+
+#### Get observed addresses
+
+- `JavaScript` - `conn.getObservedAddrs()`
+
+Get the observed address from the underlying transport.
+
+It returns the [multiaddr](https://github.com/multiformats/multiaddr) used to establish the connection.
 
 #### Update connection metadata after connection upgrade
 
@@ -147,6 +180,14 @@ Updates the connection metadata after being upgraded through the negotiation of 
 Set the local address used in the connection. It is obtained after running `identify`.
 
 `multiaddr` is the local peer [multiaddr](https://github.com/multiformats/multiaddr) used. 
+
+#### Set peer info
+
+- `JavaScript` - `conn.setPeerInfo(remotePeerInfo)`
+
+Set a reference to the peerInfo, which contains information about the peer that this conn connects to.
+
+`remotePeerInfo` is a [PeerInfo](https://github.com/libp2p/js-peer-info) instance of the remote peer.
 
 #### Create a new stream
 

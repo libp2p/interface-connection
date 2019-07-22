@@ -16,8 +16,7 @@ const defaultMaxNumberOfAttemptsForHasMultiplexer = 5
 
 /**
  * An implementation of the js-libp2p connection.
- * This is an abstract duplex connection between two nodes and
- * each transport must pipe its socket through this.
+ * It should be override by the transport to add the iterable logic.
  */
 class Connection {
   /**
@@ -169,8 +168,13 @@ class Connection {
     return stream
   }
 
-  onNewStream () {
-    // TODO ???
+  /**
+   * On a new stream open for the other party in the connection.
+   * @param {*} duplexStream streaming iterables duplex object
+   */
+  onNewStream (duplexStream) {
+    const stream = new Stream(duplexStream, this, false)
+    this._streams.push(stream)
   }
 
   /**

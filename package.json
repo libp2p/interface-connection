@@ -35,12 +35,12 @@
     "abortable-iterator": "^2.0.0",
     "class-is": "^1.1.0",
     "err-code": "^1.1.2",
-    "mocha": "^6.1.4",
     "multistream-select": "~0.14.4",
     "peer-info": "~0.15.1"
   },
   "devDependencies": {
-    "aegir": "^18.2.2"
+    "aegir": "^18.2.2",
+    "mocha": "^6.1.4"
   },
   "engines": {
     "node": ">=8.0.0",
