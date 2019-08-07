@@ -26,7 +26,7 @@ class Stream {
     /**
      * Stream identifier
      */
-    this.id = (~~(Math.random() * 1e9)).toString(36) + Date.now()
+    this.id = (parseInt(Math.random() * 1e9)).toString(36) + Date.now()
 
     /**
      * Streaming iterable duplex object

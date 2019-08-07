@@ -31,7 +31,7 @@ class Connection {
     /**
      * Connection identifier
      */
-    this.id = (~~(Math.random() * 1e9)).toString(36) + Date.now()
+    this.id = (parseInt(Math.random() * 1e9)).toString(36) + Date.now()
 
     /**
      * Status of the connection
