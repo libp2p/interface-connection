@@ -134,11 +134,11 @@ class Connection {
    */
   async newStream (protocol, options = {}) {
     if (this.status === STATUS.CLOSING) {
-      throw errCode('the connection is being closed', 'ERR_CONNECTION_BEING_CLOSED')
+      throw errCode(new Error('the connection is being closed'), 'ERR_CONNECTION_BEING_CLOSED')
     }
 
     if (this.status === STATUS.CLOSED) {
-      throw errCode('the connection is closed', 'ERR_CONNECTION_CLOSED')
+      throw errCode(new Error('the connection is closed'), 'ERR_CONNECTION_CLOSED')
     }
 
     if (!this.multiplexer) {
@@ -187,7 +187,7 @@ class Connection {
     }
 
     if (!attemptsLeft) {
-      throw errCode('no multiplexer available in the connection', 'ERR_NO_MULTIPLEXER_AVAILABLE')
+      throw errCode(new Error('no multiplexer available in the connection'), 'ERR_NO_MULTIPLEXER_AVAILABLE')
     }
 
     await new Promise((resolve) => setTimeout(() => resolve, defaultTimeForHasMultiplexer))

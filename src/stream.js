@@ -80,7 +80,7 @@ class Stream {
    */
   async drain () {
     if (this.timeline.close) {
-      throw errCode('the stream is closed', 'ERR_STREAM_CLOSED')
+      throw errCode(new Error('the stream is closed'), 'ERR_STREAM_CLOSED')
     }
 
     return async (source) => {
@@ -101,7 +101,7 @@ class Stream {
    */
   source () {
     if (this.timeline.close) {
-      throw errCode('the stream is closed', 'ERR_STREAM_CLOSED')
+      throw errCode(new Error('the stream is closed'), 'ERR_STREAM_CLOSED')
     }
 
     return abortable(this._iterableDuplex.source, this._options.signal)
