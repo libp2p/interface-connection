@@ -67,6 +67,9 @@ class Stream {
     this._options = {
       abortable: !(options.abortable === false)
     }
+
+    this.sink = this._sink.bind(this)
+    this.source = this._source()
   }
 
   /**
@@ -75,10 +78,10 @@ class Stream {
    */
 
   /**
-   * Drain a source.
+   * Sink a source.
    * @return {SinkIt}
    */
-  async drain () {
+  async _sink () {
     if (this.timeline.close) {
       throw errCode(new Error('the stream is closed'), 'ERR_STREAM_CLOSED')
     }
@@ -99,7 +102,7 @@ class Stream {
    * Get the iterable duplex source, which can be consumed.
    * @return {Iterable}
    */
-  source () {
+  _source () {
     if (this.timeline.close) {
       throw errCode(new Error('the stream is closed'), 'ERR_STREAM_CLOSED')
     }

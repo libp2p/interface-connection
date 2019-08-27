@@ -307,7 +307,7 @@ This getter returns a reference to the connection "source", which is an iterable
 
 #### Get a connection data collector
 
-- `JavaScript` - `stream.drain`
+- `JavaScript` - `stream.sink`
 
 This getter returns a reference to the connection "sink", which is an iterator that drains a source. 
 
