@@ -1,7 +1,7 @@
 'use strict'
 
 const abortable = require('abortable-iterator')
-const { ROLE } = require('./types')
+const { DIRECTION } = require('./types')
 const withIs = require('class-is')
 
 const assert = require('assert')
@@ -39,9 +39,9 @@ class Stream {
     this.connection = connection
 
     /**
-     * Role in the stream, initiator or responder
+     * direction of the stream, inbound or outbound
      */
-    this.role = isInitiator ? ROLE.INITIATOR : ROLE.RESPONDER
+    this.direction = isInitiator ? DIRECTION.INBOUND : DIRECTION.OUTBOUND
 
     /**
      * Stream timeline
@@ -81,7 +81,7 @@ class Stream {
    * Sink a source.
    * @return {SinkIt}
    */
-  async _sink () {
+  _sink () {
     if (this.timeline.close) {
       throw errCode(new Error('the stream is closed'), 'ERR_STREAM_CLOSED')
     }

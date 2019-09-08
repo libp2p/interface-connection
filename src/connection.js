@@ -2,11 +2,10 @@
 
 const PeerInfo = require('peer-info')
 const multiaddr = require('multiaddr')
-const multistream = require('multistream-select')
 
 const withIs = require('class-is')
 const Stream = require('./stream')
-const { ROLE, STATUS } = require('./types')
+const { DIRECTION, STATUS } = require('./types')
 
 const assert = require('assert')
 const errCode = require('err-code')
@@ -16,17 +15,32 @@ const defaultMaxNumberOfAttemptsForHasMultiplexer = 5
 
 /**
  * An implementation of the js-libp2p connection.
- * It should be override by the transport to add the iterable logic.
+ * Any libp2p transport should use an upgrader to return this connection.
  */
 class Connection {
   /**
    * Creates an instance of Connection.
-   * @param {multiaddr} remoteMa remote peer multiaddr
-   * @param {boolean} [isInitiator=true] peer initiated the connection
+   * @param {object} properties properties of the connection.
+   * @param {multiaddr} localAddr local multiaddr of the connection.
+   * @param {multiaddr} remoteAddr remote multiaddr of the connection.
+   * @param {PeerInfo} localPeer local peer info.
+   * @param {PeerInfo} remotePeer remote peer info.
+   * @param {function} newStream new stream muxer function.
+   * @param {function} close close raw connection function.
+   * @param {DIRECTION} direction connection establishment direction (inbound or outbound).
+   * @param {string} multiplexer connection multiplexing identifier.
+   * @param {string} encryption connection encryption method identifier.
    */
-  constructor (remoteMa, isInitiator = true) {
-    assert(multiaddr.isMultiaddr(remoteMa), 'remoteMa must be an instance of multiaddr')
-    assert(typeof isInitiator === 'boolean', 'isInitiator must be a boolean')
+  constructor ({ localAddr, remoteAddr, localPeer, remotePeer, newStream, close, direction, multiplexer, encryption }) {
+    assert(multiaddr.isMultiaddr(localAddr), 'localAddr must be an instance of multiaddr')
+    assert(multiaddr.isMultiaddr(remoteAddr), 'remoteAddr must be an instance of multiaddr')
+    assert(PeerInfo.isPeerInfo(localPeer), 'localPeer must be an instance of multiaddr')
+    assert(PeerInfo.isPeerInfo(remotePeer), 'remotePeer must be an instance of multiaddr')
+    assert(typeof newStream === 'function', 'new stream must be a function')
+    assert(typeof close === 'function', 'close must be a function')
+    assert(direction === DIRECTION.INBOUND || direction === DIRECTION.OUTBOUND, 'direction must be one of the Enum from connection.types')
+    assert(typeof multiplexer === 'string', 'multiplexer identifier must be a string')
+    assert(typeof encryption === 'string', 'encrypton protocol identifier must be a string')
 
     /**
      * Connection identifier
@@ -42,9 +56,19 @@ class Connection {
      * Endpoints multiaddrs
      */
     this.endpoints = {
-      local: undefined,
-      remote: remoteMa
+      localAddr,
+      remoteAddr
     }
+
+    /**
+     * Local peer info.
+     */
+    this.localPeer = localPeer
+
+    /**
+     * Remote peer info.
+     */
+    this.remotePeer = remotePeer
 
     /**
      * Connection timeline
@@ -55,24 +79,29 @@ class Connection {
     }
 
     /**
-     * Role in the connection, initiator or responder
+     * Connection establishment diection (inbound or outbound)
      */
-    this.role = isInitiator ? ROLE.INITIATOR : ROLE.RESPONDER
+    this.direction = direction
 
     /**
-     * Remote peer infos
+     * Reference to the new stream function of the multiplexer
      */
-    this.peerInfo = undefined
+    this._newStream = newStream
 
     /**
-     * Reference of the multiplexer being used
+     * Reference to the close function of the raw connection
      */
-    this.multiplexer = undefined
+    this._close = close
 
     /**
-     * The encryption method being used
+     * Identifier of the multiplexer used
      */
-    this.encryption = undefined
+    this.multiplexer = multiplexer
+
+    /**
+     * Identifier fo the encryption method used
+     */
+    this.encryption = encryption
 
     /**
      * Connection streams
@@ -86,43 +115,19 @@ class Connection {
   }
 
   /**
-   * Get observed address from the underlying transport
-   * @return {multiaddr} remote peer multiaddr
+   * Get local address from the underlying transport.
+   * @type {multiaddr}
    */
-  getObservedAddrs () {
-    return this.endpoints.remote
+  get localAddr () {
+    return this.endpoints.localAddr
   }
 
   /**
-   * Update connection metadata after being upgraded through the
-   * negotiation of the stream multiplexer and encryption protocol.
-   * @param {Multiplexer} multiplexer stream muxer instance
-   * @param {string} encryption encryption protocol
+   * Get remote address from the underlying transport.
+   * @type {multiaddr}
    */
-  upgraded (multiplexer, encryption) {
-    // TODO: validate parameters
-    this.multiplexer = multiplexer
-    this.encryption = encryption
-  }
-
-  /**
-   * Set local address of the connection after running identify.
-   * @param {multiaddr} ma used in the connection.
-   */
-  setLocalAddress (ma) {
-    assert(multiaddr.isMultiaddr(ma), 'ma must be an instance of multiaddr')
-
-    this.endpoints.local = ma
-  }
-
-  /**
-   * Set remote peer info.
-   * @param {PeerInfo} peerInfo remote peer PeerInfo
-   */
-  setPeerInfo (peerInfo) {
-    assert(PeerInfo.isPeerInfo(peerInfo), 'peerInfo must be an instance of PeerInfo')
-
-    this.peerInfo = peerInfo
+  get remoteAddr () {
+    return this.endpoints.remoteAddr
   }
 
   /**
@@ -130,7 +135,7 @@ class Connection {
    * @param {string} protocol intended protocol for the stream
    * @param {object} [options={}] stream options
    * @param {boolean} [options.abortable=true] abortable signal
-   * @return {Stream} stream instance
+   * @return {Stream} new muxed+multistream-selected stream
    */
   async newStream (protocol, options = {}) {
     if (this.status === STATUS.CLOSING) {
@@ -145,35 +150,20 @@ class Connection {
       await this._hasMultiplexerOrErrored(defaultMaxNumberOfAttemptsForHasMultiplexer)
     }
 
-    const duplexStream = await this.multiplexer.newStream()
+    const duplexStream = await this._newStream(protocol)
     const stream = new Stream(duplexStream, this, true, options)
 
     this._streams.push(stream)
-
-    // If no protocol provided, return the stream
-    if (!protocol) {
-      return stream
-    }
-
-    // Create a new instance of the multistream to handle the protocol selection
-    const msDialer = new multistream.Dialer()
-
-    // Negotiate the multistream protocol
-    await msDialer.handle(duplexStream)
-
-    // Handshake on the desired protocol
-    await msDialer.select(protocol)
-    stream.setProtocol(protocol)
 
     return stream
   }
 
   /**
    * On a new stream open for the other party in the connection.
-   * @param {*} duplexStream streaming iterables duplex object
+   * @param {Stream} newStream new muxed+multistream-selected stream
    */
-  onNewStream (duplexStream) {
-    const stream = new Stream(duplexStream, this, false)
+  onNewStream (newStream) {
+    const stream = new Stream(newStream, this, false)
     this._streams.push(stream)
   }
 
@@ -221,6 +211,9 @@ class Connection {
     // Close all streams
     this._closing = this._closeStreams()
     await this._closing
+
+    // Close raw connection
+    this._closgin = await this._close()
 
     this.timeline.close = Date.now()
     this.status = STATUS.CLOSED

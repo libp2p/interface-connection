@@ -52,59 +52,7 @@ Before creating a connection from a transport compatible with `libp2p` it is imp
 
 A connection stands for the libp2p communication duplex layer between two nodes. It is **not** the underlying raw transport duplex layer (socket), such as a TCP socket, but an abstracted layer that sits on top of the raw socket.
 
-When a libp2p transport creates is socket, a new instance should be created by extending the `connection` from `interface-connection` and transforming it into an iterable.
-
 This helps ensuring that the transport is responsible for socket management, while also allowing the application layer to handle the connection management.
-
-```js
-const abortable = require('abortable-iterator')
-
-const { Connection } = require('interface-connection')
-
-class Libp2pSocket extends Connection {
-  constructor (rawSocket, ma, opts = {}) {
-    super(ma, opts)
-
-    this._rawSocket = rawSocket
-
-    this.sink = this._sink(opts)
-    this.source = opts.signal ? abortable(rawSocket.source, opts.signal) : rawSocket.source
-  }
-
-  _sink (opts) {
-    return async (source) => {
-      try {
-        await this._rawSocket.sink(abortable(source, opts.signal))
-      } catch (err) {
-        // Re-throw non-aborted errors
-        if (err.type !== 'aborted') throw err
-        // Otherwise, this is fine...
-        await this._rawSocket.close()
-      }
-    }
-  }
-}
-
-module.exports = Libp2pSocket
-```
-
-```js
-const Libp2pSocket = require('./socket')
-
-class Transport {
-  async dial () {
-    // ...
-
-    // create the raw socket and the connection
-    const socket = await this._connect()
-    const conn = new libp2pSocket(socket, remoteMa, {})
-
-    return conn
-  }
-
-  _connect () {}
-}
-```
 
 ### Test suite
 
@@ -134,11 +82,13 @@ describe('your connection', () => {
 A valid connection (one that follows this abstraction), must implement the following API:
 
 - type: `Connection`
-  - `new Connection(remoteMa, isInitiator)`
-  - `conn.getObservedAddrs()`
-  - `conn.upgraded(multiplexer, encryption)`
-  - `conn.setLocalAddress(multiaddr)`
-  - `Promise<Stream> conn.newStream(options)`
+  - `new Connection({localAddr, remoteAddr, localPeer, remotePeer, newStream, close, direction, multiplexer, encryption})`
+  - `<Multiaddr> conn.localAddr`
+  - `<Multiaddr> conn.remoteAddr`
+  - `<PeerInfo> conn.localPeer`
+  - `<PeerInfo> conn.remotePeer`
+  - `<Direction> conn.direction`
+  - `Promise<Stream> conn.newStream(protocol, options)`
   - `Array<Stream> conn.getStreams()`
   - `Promise<> conn.close()`
 
@@ -150,45 +100,17 @@ const { Connection } = require('interface-connection')
 
 #### Creating a connection instance
 
-- `JavaScript` - `const conn = new Connection(remoteMa, isInitiator = true)`
+- `JavaScript` - `const conn = new Connection({localAddr, remoteAddr, localPeer, remotePeer, newStream, close, direction, multiplexer, encryption})`
 
 Creates a new Connection instance.
 
-`remoteMa` is the [multiaddr](https://github.com/multiformats/multiaddr) address used to communicate with the remote peer.
-`isInitiator` is a `boolean` indicating whether the peer creating the Connection instance initiated the connection. Default value: `true`.
-
-#### Get observed addresses
-
-- `JavaScript` - `conn.getObservedAddrs()`
-
-Get the observed address from the underlying transport.
-
-It returns the [multiaddr](https://github.com/multiformats/multiaddr) used to establish the connection.
-
-#### Update connection metadata after connection upgrade
-
-- `JavaScript` - `conn.upgraded(multiplexer, encryption)`
-
-Updates the connection metadata after being upgraded through the negotiation of the stream multiplexer and encryption protocols.
-
-`multiplexer` is a stream muxer implementing the [interface-stream-muxer](https://github.com/libp2p/interface-stream-muxer).
-`encryption` is a `string` with the encryption protocol. Example: `/secio/1.0.0`.
-
-#### Set local address
-
-- `JavaScript` - `conn.setLocalAddress(multiaddr)`
-
-Set the local address used in the connection. It is obtained after running `identify`.
-
-`multiaddr` is the local peer [multiaddr](https://github.com/multiformats/multiaddr) used. 
-
-#### Set peer info
-
-- `JavaScript` - `conn.setPeerInfo(remotePeerInfo)`
-
-Set a reference to the peerInfo, which contains information about the peer that this conn connects to.
-
-`remotePeerInfo` is a [PeerInfo](https://github.com/libp2p/js-peer-info) instance of the remote peer.
+`localAddr` is the [multiaddr](https://github.com/multiformats/multiaddr) address used by the local peer to reach the remote.
+`remoteAddr` is the [multiaddr](https://github.com/multiformats/multiaddr) address used to communicate with the remote peer.
+`localPeer` is the [PeerInfo](https://github.com/libp2p/js-peer-info) of the local peer.
+`remotePeer` is the [PeerInfo](https://github.com/libp2p/js-peer-info) of the remote peer.
+`newStream` is the `function` responsible for getting a new muxed+multistream-selected stream.
+`close` is the `function` responsible for closing the raw connection.
+`direction` is a `Direction` indicating whether the connection is `INBOUND` or `OUTBOUND`.
 
 #### Create a new stream
 
@@ -224,11 +146,29 @@ It returns a `Promise`.
 
 This property contains the identifier of the connection.
 
+#### Remote address
+
+- `JavaScript` - `conn.remoteAddr`
+
+This getter returns the `remote` [multiaddr](https://github.com/multiformats/multiaddr) address.
+
+#### Local address
+
+- `JavaScript` - `conn.localAddr`
+
+This getter returns the `local` [multiaddr](https://github.com/multiformats/multiaddr) address.
+
 #### Remote peer info
 
-- `JavaScript` - `conn.peerInfo`
+- `JavaScript` - `conn.remotePeer`
 
 This property contains the remote peer info of this connection.
+
+#### Local peer info
+
+- `JavaScript` - `conn.localPeer`
+
+This property contains the local peer info of this connection.
 
 #### Status of the connection
 
@@ -250,9 +190,9 @@ This property contains an object with the `open` and `close` timestamps of the c
 
 #### Role of the connection
 
-- `JavaScript` - `conn.role`
+- `JavaScript` - `conn.direction`
 
-This property contains the role of the peer in the connection. It can be `INITIATOR` or `RESPONDER`.
+This property contains the direction of the peer in the connection. It can be `INBOUND` or `OUTBOUND`.
 
 #### Multiplexer
 
@@ -332,11 +272,11 @@ This property contains the identifier of the stream.
 
 This property contains the connection associated with this stream.
 
-#### Role of the strean
+#### Direction of the strean
 
-- `JavaScript` - `stream.role`
+- `JavaScript` - `stream.direction`
 
-This property contains the role of the peer in the stream. It can be `INITIATOR` or `RESPONDER`.
+This property contains the direction of the peer in the stream. It can be `INBOUND` or `OUTBOUND`.
 
 #### Timeline
 
@@ -344,15 +284,15 @@ This property contains the role of the peer in the stream. It can be `INITIATOR`
 
 This property contains an object with the `open` and `close` timestamps of the stream. The `close` timestamp is `undefined` until the stream is closed.
 
-### Role
+### Direction
 
 It can be obtained as follows:
 
 ```js
-const { ROLE } = require('interface-connection')
+const { DIRECTION } = require('interface-connection')
 
-// ROLE.INITIATOR
-// ROLE.RESPONDER
+// DIRECTION.INBOUND
+// DIRECTION.OUTBOUND
 ```
 
 ### Status

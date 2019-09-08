@@ -1,8 +1,8 @@
 'use strict'
 
-exports.ROLE = {
-  INITIATOR: 0,
-  RESPONDER: 1
+exports.DIRECTION = {
+  INBOUND: 0,
+  OUTBOUND: 1
 }
 
 exports.STATUS = {
