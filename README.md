@@ -46,7 +46,7 @@ Include this badge in your readme if you make a module that is compatible with t
 Before creating a connection from a transport compatible with `libp2p` it is important to understand some concepts:
 
 - **socket**: the underlying raw duplex connection between two nodes. It is created by the transports during a dial/listen.
-- **multiaddr connection**: an abstraction over the socket to allow it to work with multiaddr addresses. It is a duplex connection that transports create to wrap the socket before passing to an upgrader that turns it into a standard connection (see below).
+- **[multiaddr connection](https://github.com/libp2p/interface-transport#multiaddrconnection)**: an abstraction over the socket to allow it to work with multiaddr addresses. It is a duplex connection that transports create to wrap the socket before passing to an upgrader that turns it into a standard connection (see below).
 - **connection**: a connection between two _peers_ that has built in multiplexing and info about the connected peer. It is created from a [multiaddr connection](https://github.com/libp2p/interface-transport#multiaddrconnection) by an upgrader. The upgrader uses multistream-select to add secio and multiplexing and returns this object.
 - **stream**: a muxed duplex channel of the `connection`. Each connection may have many streams.
 
@@ -87,8 +87,8 @@ A valid connection (one that follows this abstraction), must implement the follo
   - `<Multiaddr> conn.remoteAddr`
   - `<PeerInfo> conn.localPeer`
   - `<PeerInfo> conn.remotePeer`
-  - `<Direction> conn.direction`
-  - `Promise<Stream> conn.newStream(protocol, options)`
+  - `<String> conn.direction`
+  - `Promise<Stream> conn.newStream(protocol, [options])`
   - `Array<Stream> conn.getStreams()`
   - `Promise<> conn.close()`
 
@@ -204,7 +204,7 @@ This property contains a reference to the `multiplexer` being used in the connec
 
 - `JavaScript` - `conn.encryption`
 
-This property contains the encryption method being used in the connection. It is `undefined` until the connection has been upgraded.
+This property contains the encryption method being used in the connection. It is `undefined` if the connection is not encrypted.
 
 #### Tags
 
@@ -218,8 +218,8 @@ A valid stream (one that follows this abstraction), must implement the following
 
 - type: `Stream`
   - `new Stream()`
-  - `stream.source()`
-  - `stream.drain()`
+  - `stream.source` - iterable object
+  - `stream.sink` - Function
   - `stream.close()`
 
 It can be obtained as follows:
