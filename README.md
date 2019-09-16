@@ -82,12 +82,30 @@ describe('your connection', () => {
 A valid connection (one that follows this abstraction), must implement the following API:
 
 - type: `Connection`
-  - `new Connection({localAddr, remoteAddr, localPeer, remotePeer, newStream, close, direction, multiplexer, encryption})`
+```js
+new Connection({
+  localAddr,
+  remoteAddr,
+  localPeer,
+  remotePeer,
+  newStream,
+  close,
+  stat: {
+    direction,
+    timeline: {
+      open,
+      upgraded
+    },
+    multiplexer,
+    encryption
+  }
+})
+```
   - `<Multiaddr> conn.localAddr`
   - `<Multiaddr> conn.remoteAddr`
-  - `<PeerInfo> conn.localPeer`
-  - `<PeerInfo> conn.remotePeer`
-  - `<String> conn.direction`
+  - `<PeerId> conn.localPeer`
+  - `<PeerId> conn.remotePeer`
+  - `<Object> conn.stat`
   - `Promise<Stream> conn.newStream(protocol, [options])`
   - `Array<Stream> conn.getStreams()`
   - `Promise<> conn.close()`
@@ -96,6 +114,24 @@ It can be obtained as follows:
 
 ```js
 const { Connection } = require('interface-connection')
+
+const conn = new Connection({
+  localAddr: maConn.localAddr,
+  remoteAddr: maConn.remoteAddr,
+  localPeer: this._peerId,
+  remotePeer,
+  newStream,
+  close: err => maConn.close(err),
+  stats: {
+    direction: 'outbound',
+    timeline: {
+      open: maConn.timeline.open,
+      upgraded: Date.now()
+    },
+    multiplexer,
+    encryption
+  }
+})
 ```
 
 #### Creating a connection instance
@@ -106,11 +142,15 @@ Creates a new Connection instance.
 
 `localAddr` is the [multiaddr](https://github.com/multiformats/multiaddr) address used by the local peer to reach the remote.
 `remoteAddr` is the [multiaddr](https://github.com/multiformats/multiaddr) address used to communicate with the remote peer.
-`localPeer` is the [PeerInfo](https://github.com/libp2p/js-peer-info) of the local peer.
-`remotePeer` is the [PeerInfo](https://github.com/libp2p/js-peer-info) of the remote peer.
+`localPeer` is the [PeerId](https://github.com/libp2p/js-peer-id) of the local peer.
+`remotePeer` is the [PeerId](https://github.com/libp2p/js-peer-id) of the remote peer.
 `newStream` is the `function` responsible for getting a new muxed+multistream-selected stream.
 `close` is the `function` responsible for closing the raw connection.
-`direction` is a `Direction` indicating whether the connection is `INBOUND` or `OUTBOUND`.
+`stats` is an `object` with the metadata of the connection. It contains:
+- `direction` is a `string` indicating whether the connection is `inbound` or `outbound`.
+- `timeline` is an `object` with the relevant events timestamps of the connection (`open`, `upgraded` and `closed`; the `closed` will be added when the connection is closed).
+- `multiplexer` is a `string` with the connection multiplexing codec (optional).
+- `encryption` is a `string` with the connection encryption method identifier (optional).
 
 #### Create a new stream
 
@@ -118,9 +158,9 @@ Creates a new Connection instance.
 
 Create a new stream within the connection.
 
-`protocol` is the intended protocol to use. This is optional and may be `undefined`. Example: `/echo/1.0.0`
+`protocol` is the intended protocol to use. Example: `/echo/1.0.0`
 `options` is an object containing the stream options.
-`options.abortable` is a boolean for using the abortable signal. Default value: `true`.
+`options.signal` is an [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal).
 
 It returns a `Promise` with the instance of the created `Stream`.
 
@@ -146,6 +186,18 @@ It returns a `Promise`.
 
 This property contains the identifier of the connection.
 
+#### Remote peer
+
+- `JavaScript` - `conn.remotePeer`
+
+This property contains the remote `peer-id` of this connection.
+
+#### Local peer
+
+- `JavaScript` - `conn.localPeer`
+
+This property contains the local `peer-id` of this connection.
+
 #### Remote address
 
 - `JavaScript` - `conn.remoteAddr`
@@ -158,51 +210,29 @@ This getter returns the `remote` [multiaddr](https://github.com/multiformats/mul
 
 This getter returns the `local` [multiaddr](https://github.com/multiformats/multiaddr) address.
 
-#### Remote peer info
+#### Stat
 
-- `JavaScript` - `conn.remotePeer`
+- `JavaScript` - `conn.stat`
 
-This property contains the remote peer info of this connection.
+This getter returns an `Object` with the metadata of the connection, as follows:
 
-#### Local peer info
+- `status`:
 
-- `JavaScript` - `conn.localPeer`
+This property contains the status of the connection. It can be either `open`, `closing` or `closed`. Once the connection is created it is in an `open` status. When a `conn.close()` happens, the status will change to `closing` and finally, after all the connection streams are properly closed, the status will be `closed`.
 
-This property contains the local peer info of this connection.
+- `timeline`:
 
-#### Status of the connection
+This property contains an object with the `open`, `upgraded` and `close` timestamps of the connection. Note that, the `close` timestamp is `undefined` until the connection is closed.
 
-- `JavaScript` - `conn.status`
+- `direction`:
 
-This property contains the status of the connection. It can be either `OPEN`, `CLOSED` or `CLOSING`. Once the connection is created it is in an `OPEN` status. When a `conn.close()` happens, the status will change to `CLOSING` and finally, after all the connection streams are properly closed, the status will be `CLOSED`.
+This property contains the direction of the peer in the connection. It can be `inbound` or `outbound`.
 
-#### Endpoints multiaddr
+- `multiplexer`:
 
-- `JavaScript` - `conn.endpoints`
+This property contains the `multiplexing` codec being used in the connection.
 
-This property contains an object with the `local` and `remote` multiaddrs as properties. The `local` multiaddr is `undefined` until the connection is upgraded and `identify` finishes.
-
-#### Timeline
-
-- `JavaScript` - `conn.timeline`
-
-This property contains an object with the `open` and `close` timestamps of the connection. The `close` timestamp is `undefined` until the connection is closed.
-
-#### Role of the connection
-
-- `JavaScript` - `conn.direction`
-
-This property contains the direction of the peer in the connection. It can be `INBOUND` or `OUTBOUND`.
-
-#### Multiplexer
-
-- `JavaScript` - `conn.multiplexer`
-
-This property contains a reference to the `multiplexer` being used in the connection. It is `undefined` until the connection has been upgraded.
-
-#### Encryption
-
-- `JavaScript` - `conn.encryption`
+- `encryption`:
 
 This property contains the encryption method being used in the connection. It is `undefined` if the connection is not encrypted.
 
@@ -217,7 +247,14 @@ This property contains an array of tags associated with the connection. New tags
 A valid stream (one that follows this abstraction), must implement the following API:
 
 - type: `Stream`
-  - `new Stream()`
+```js
+new Stream({
+  iterableDuplex,
+  conn,
+  direction,
+  options
+})
+```
   - `stream.source` - iterable object
   - `stream.sink` - Function
   - `stream.close()`
@@ -230,15 +267,15 @@ const { Stream } = require('interface-connection')
 
 #### Creating a stream instance
 
-- `JavaScript` - `const stream = new Stream(iterableDuplex, connection, isInitator, options)`
+- `JavaScript` - `const stream = new Stream({ iterableDuplex, conn, direction, options })`
 
 Creates a new Stream instance.
 
 `iterableDuplex` is a streaming iterable duplex object.
-`connection` is a reference to the connection associated with this stream.
-`isInitiator` is a `boolean` indicating whether the peer creating the Stream instance initiated the stream. Default value: `true`.
+`conn` is a reference to the underlying connection.
+`direction` is a `string` indicating whether the connection is `inbound` or `outbound`.
 `options` is an object containing the stream options.
-`options.abortable` is a boolean for using the abortable signal. Default value: `true`.
+`options.signal` is an [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal).
 
 #### Get a connection Source
 
@@ -272,37 +309,16 @@ This property contains the identifier of the stream.
 
 This property contains the connection associated with this stream.
 
-#### Direction of the strean
+#### Stat
 
-- `JavaScript` - `stream.direction`
+- `JavaScript` - `conn.stat`
 
-This property contains the direction of the peer in the stream. It can be `INBOUND` or `OUTBOUND`.
+This getter returns an `Object` with the metadata of the connection, as follows:
 
-#### Timeline
-
-- `JavaScript` - `stream.timeline`
+- `timeline`:
 
 This property contains an object with the `open` and `close` timestamps of the stream. The `close` timestamp is `undefined` until the stream is closed.
 
-### Direction
+- `direction`:
 
-It can be obtained as follows:
-
-```js
-const { DIRECTION } = require('interface-connection')
-
-// DIRECTION.INBOUND
-// DIRECTION.OUTBOUND
-```
-
-### Status
-
-It can be obtained as follows:
-
-```js
-const { STATUS } = require('interface-connection')
-
-// STATUS.OPEN
-// STATUS.CLOSED
-// STATUS.CLOSING
-```
+This property contains the direction of the peer in the stream. It can be `inbound` or `outbound`.

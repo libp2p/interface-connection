@@ -16,7 +16,7 @@
     "release-minor": "aegir release --type minor --no-test",
     "release-major": "aegir release --type major --no-test"
   },
-  "pre-commit": [
+  "pre-push": [
     "lint"
   ],
   "repository": {
@@ -36,14 +36,14 @@
     "class-is": "^1.1.0",
     "err-code": "^2.0.0",
     "multistream-select": "~0.14.6",
-    "peer-info": "~0.16.0"
+    "peer-id": "~0.13.2"
   },
   "devDependencies": {
-    "aegir": "^20.0.0",
+    "aegir": "^20.2.0",
     "mocha": "^6.2.0"
   },
   "engines": {
-    "node": ">=8.0.0",
+    "node": ">=10.0.0",
     "npm": ">=6.0.0"
   },
   "contributors": [

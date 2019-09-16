@@ -1,7 +1,6 @@
 'use strict'
 
 const abortable = require('abortable-iterator')
-const { DIRECTION } = require('./types')
 const withIs = require('class-is')
 
 const assert = require('assert')
@@ -13,15 +12,15 @@ const errCode = require('err-code')
 class Stream {
   /**
    * Creates an instance of Stream.
-   * @param {*} iterableDuplex streaming iterables duplex object
-   * @param {Connection} connection connection associated with the stream
-   * @param {boolean} [isInitiator=true] peer initiated the stream
-   * @param {object} [options={}] stream options
-   * @param {boolean} [options.abortable=true] abortable signal
-   * @memberof Stream
+   * @param {object} properties properties of the stream.
+   * @param {*} properties.iterableDuplex streaming iterables duplex object.
+   * @param {Connection} properties.conn connection associated with the stream.
+   * @param {string} properties.direction direction of the stream startup ("inbound" or "outbound").
+   * @param {object} [properties.options={}] stream options.
+   * @param {AbortSignal} [properties.options.signal] abortable signal.
    */
-  constructor (iterableDuplex, connection, isInitiator = true, options = {}) {
-    assert(typeof isInitiator === 'boolean', 'isInitiator must be a boolean')
+  constructor ({ iterableDuplex, conn, direction, options = {} }) {
+    assert(direction === 'inbound' || direction === 'outbound', 'direction must be "inbound" or "outbound"')
 
     /**
      * Stream identifier
@@ -36,19 +35,17 @@ class Stream {
     /**
      * Stream parent connection
      */
-    this.connection = connection
+    this.conn = conn
 
     /**
-     * direction of the stream, inbound or outbound
+     * stream metadata.
      */
-    this.direction = isInitiator ? DIRECTION.INBOUND : DIRECTION.OUTBOUND
-
-    /**
-     * Stream timeline
-     */
-    this.timeline = {
-      open: Date.now(),
-      close: undefined
+    this._stat = {
+      direction, // direction of the stream, "inbound" or "outbound"
+      timeline: {
+        open: Date.now(),
+        close: undefined
+      }
     }
 
     /**
@@ -64,12 +61,18 @@ class Stream {
     /**
      * Stream options
      */
-    this._options = {
-      abortable: !(options.abortable === false)
-    }
+    this._options = options
 
     this.sink = this._sink.bind(this)
     this.source = this._source()
+  }
+
+  /**
+   * Get stream metadata
+   * @return {Object}
+   */
+  get stat () {
+    return this._stat
   }
 
   /**
@@ -82,7 +85,7 @@ class Stream {
    * @return {SinkIt}
    */
   _sink () {
-    if (this.timeline.close) {
+    if (this._stat.timeline.close) {
       throw errCode(new Error('the stream is closed'), 'ERR_STREAM_CLOSED')
     }
 
@@ -103,7 +106,7 @@ class Stream {
    * @return {Iterable}
    */
   _source () {
-    if (this.timeline.close) {
+    if (this._stat.timeline.close) {
       throw errCode(new Error('the stream is closed'), 'ERR_STREAM_CLOSED')
     }
 
@@ -124,14 +127,13 @@ class Stream {
    * Close a stream
    * @return {Promise}
    */
-  close () {
-    if (this.timeline.close) {
+  async close () {
+    if (this._stat.timeline.close) {
       return
     }
 
-    this.timeline.close = Date.now()
-
-    return this._iterableDuplex.close()
+    await this._iterableDuplex.close()
+    this._stat.timeline.close = Date.now()
   }
 }
 

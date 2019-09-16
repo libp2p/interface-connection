@@ -6,8 +6,6 @@ const chai = require('chai')
 const expect = chai.expect
 chai.use(require('dirty-chai'))
 
-const { STATUS } = require('../src/types')
-
 module.exports = (test) => {
   describe('connection', () => {
     describe('open connection', () => {
@@ -27,14 +25,15 @@ module.exports = (test) => {
         expect(connection.id).to.exist()
         expect(connection.localPeer).to.exist()
         expect(connection.remotePeer).to.exist()
-        expect(connection.status).to.equal(STATUS.OPEN)
         expect(connection.endpoints.local).to.exist()
         expect(connection.endpoints.remote).to.exist()
-        expect(connection.timeline.open).to.exist()
-        expect(connection.timeline.close).to.not.exist()
-        expect(connection.direction).to.exist()
-        expect(connection.multiplexer).to.exist()
-        expect(connection.encryption).to.exist()
+        expect(connection.stat.status).to.equal('open')
+        expect(connection.stat.timeline.open).to.exist()
+        expect(connection.stat.timeline.upgraded).to.exist()
+        expect(connection.stat.timeline.close).to.not.exist()
+        // expect(connection.stat.direction).to.exist()
+        // expect(connection.stat.multiplexer).to.exist()
+        expect(connection.stat.encryption).to.exist()
         expect(connection.streams).to.equal([])
         expect(connection.tags).to.equal([])
       })
@@ -70,11 +69,11 @@ module.exports = (test) => {
       })
 
       it('should be able to close the connection after being created', async () => {
-        expect(connection.timeline.close).to.not.exist()
+        expect(connection.stat.timeline.close).to.not.exist()
         await connection.close()
 
-        expect(connection.timeline.close).to.exist()
-        expect(connection.status).to.equal(STATUS.CLOSED)
+        expect(connection.stat.timeline.close).to.exist()
+        expect(connection.stat.status).to.equal('closed')
       })
 
       it('should be able to close the connection after opening a stream', async () => {
@@ -82,11 +81,11 @@ module.exports = (test) => {
         await connection.newStream()
 
         // Close connection
-        expect(connection.timeline.close).to.not.exist()
+        expect(connection.stat.timeline.close).to.not.exist()
         await connection.close()
 
-        expect(connection.timeline.close).to.exist()
-        expect(connection.status).to.equal(STATUS.CLOSED)
+        expect(connection.stat.timeline.close).to.exist()
+        expect(connection.stat.status).to.equal('closed')
       })
     })
   })
