@@ -16,10 +16,11 @@ class Stream {
    * @param {*} properties.iterableDuplex streaming iterables duplex object.
    * @param {Connection} properties.conn connection associated with the stream.
    * @param {string} properties.direction direction of the stream startup ("inbound" or "outbound").
+   * @param {string} properties.protocol the protocol the stream us using.
    * @param {object} [properties.options={}] stream options.
    * @param {AbortSignal} [properties.options.signal] abortable signal.
    */
-  constructor ({ iterableDuplex, conn, direction, options = {} }) {
+  constructor ({ iterableDuplex, conn, direction, protocol, options = {} }) {
     assert(direction === 'inbound' || direction === 'outbound', 'direction must be "inbound" or "outbound"')
 
     /**
@@ -56,7 +57,7 @@ class Stream {
     /**
      * Stream protocol
      */
-    this.protocol = undefined
+    this.protocol = protocol
 
     /**
      * Stream options
@@ -111,16 +112,6 @@ class Stream {
     }
 
     return abortable(this._iterableDuplex.source, this._options.signal)
-  }
-
-  /**
-   * Set the protocol used on the stream
-   * @param {string} protocol
-   */
-  setProtocol (protocol) {
-    assert(typeof protocol === 'string', 'the protocol should be a string')
-
-    this.protocol = protocol
   }
 
   /**

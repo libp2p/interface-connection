@@ -25,7 +25,7 @@ module.exports = (test) => {
       const stream = await connection.newStream(protocol)
 
       expect(stream.id).to.exist()
-      expect(stream.connection).to.exist()
+      expect(stream.conn).to.exist()
       expect(stream._stat.timeline.open).to.exist()
       expect(stream._stat.timeline.close).to.not.exist()
       expect(stream.tags).to.exist()
@@ -41,7 +41,8 @@ module.exports = (test) => {
     })
 
     it('should be able to close a stream', async () => {
-      const stream = await connection.newStream()
+      const protocol = '/echo/0.0.1'
+      const stream = await connection.newStream(protocol)
 
       await stream.close()
 

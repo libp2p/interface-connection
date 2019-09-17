@@ -25,8 +25,8 @@ module.exports = (test) => {
         expect(connection.id).to.exist()
         expect(connection.localPeer).to.exist()
         expect(connection.remotePeer).to.exist()
-        expect(connection.endpoints.local).to.exist()
-        expect(connection.endpoints.remote).to.exist()
+        expect(connection.localAddr).to.exist()
+        expect(connection.remoteAddr).to.exist()
         expect(connection.stat.status).to.equal('open')
         expect(connection.stat.timeline.open).to.exist()
         expect(connection.stat.timeline.upgraded).to.exist()
@@ -34,18 +34,19 @@ module.exports = (test) => {
         // expect(connection.stat.direction).to.exist()
         // expect(connection.stat.multiplexer).to.exist()
         expect(connection.stat.encryption).to.exist()
-        expect(connection.streams).to.equal([])
-        expect(connection.tags).to.equal([])
+        expect(connection.getStreams()).to.eql([])
+        expect(connection.tags).to.eql([])
       })
 
       it('should return an empty array of streams', () => {
         const streams = connection.getStreams()
 
-        expect(streams).to.equal([])
+        expect(streams).to.eql([])
       })
 
       it('should be able to create a new stream', async () => {
-        const stream = await connection.newStream()
+        const protocol = '/echo/0.0.1'
+        const stream = await connection.newStream(protocol)
         const connStreams = await connection.getStreams()
 
         expect(stream).to.exist()
@@ -78,7 +79,8 @@ module.exports = (test) => {
 
       it('should be able to close the connection after opening a stream', async () => {
         // Open stream
-        await connection.newStream()
+        const protocol = '/echo/0.0.1'
+        await connection.newStream(protocol)
 
         // Close connection
         expect(connection.stat.timeline.close).to.not.exist()

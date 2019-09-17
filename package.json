@@ -11,10 +11,12 @@
   "scripts": {
     "lint": "aegir lint",
     "build": "aegir build",
-    "test": "node -e 'process.exit()'",
-    "release": "aegir release --no-test",
-    "release-minor": "aegir release --type minor --no-test",
-    "release-major": "aegir release --type major --no-test"
+    "test": "aegir test",
+    "test:node": "aegir test -t node",
+    "test:browser": "aegir test -t browser -t webworker",
+    "release": "aegir release",
+    "release-minor": "aegir release --type minor",
+    "release-major": "aegir release --type major"
   },
   "pre-push": [
     "lint"
@@ -33,13 +35,17 @@
   "homepage": "https://github.com/libp2p/interface-connection",
   "dependencies": {
     "abortable-iterator": "^2.1.0",
+    "chai": "^4.2.0",
     "class-is": "^1.1.0",
+    "dirty-chai": "^2.0.1",
     "err-code": "^2.0.0",
+    "multiaddr": "^7.1.0",
     "multistream-select": "~0.14.6",
     "peer-id": "~0.13.2"
   },
   "devDependencies": {
     "aegir": "^20.2.0",
+    "it-pair": "^1.0.0",
     "mocha": "^6.2.0"
   },
   "engines": {

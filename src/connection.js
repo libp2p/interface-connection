@@ -50,12 +50,14 @@ class Connection {
     this.id = (parseInt(Math.random() * 1e9)).toString(36) + Date.now()
 
     /**
-     * Endpoints multiaddrs.
+     * Observed multiaddr of the local peer
      */
-    this._endpoints = {
-      localAddr,
-      remoteAddr
-    }
+    this.localAddr = localAddr
+
+    /**
+     * Observed multiaddr of the remote peer
+     */
+    this.remoteAddr = remoteAddr
 
     /**
      * Local peer id.
@@ -101,22 +103,6 @@ class Connection {
   }
 
   /**
-   * Get local address from the underlying transport.
-   * @type {multiaddr}
-   */
-  get localAddr () {
-    return this._endpoints.localAddr
-  }
-
-  /**
-   * Get remote address from the underlying transport.
-   * @type {multiaddr}
-   */
-  get remoteAddr () {
-    return this._endpoints.remoteAddr
-  }
-
-  /**
    * Get connection metadata
    * @return {Object}
    */
@@ -126,24 +112,30 @@ class Connection {
 
   /**
    * Create a new stream from this connection
-   * @param {string} protocol intended protocol for the stream
+   * @param {string[]} protocols intended protocol for the stream
    * @param {object} [options={}] stream options
    * @param {AbortSignal} [options.signal] abortable signal
    * @return {Stream} new muxed+multistream-selected stream
    */
-  async newStream (protocol, options = {}) {
-    if (this.status === 'closing') {
+  async newStream (protocols, options = {}) {
+    if (this.stat.status === 'closing') {
       throw errCode(new Error('the connection is being closed'), 'ERR_CONNECTION_BEING_CLOSED')
     }
 
-    if (this.status === 'closed') {
+    if (this.stat.status === 'closed') {
       throw errCode(new Error('the connection is closed'), 'ERR_CONNECTION_CLOSED')
     }
 
-    const duplexStream = await this._newStream(protocol)
-    const stream = new Stream(duplexStream, this, 'outbound', options)
+    if (!Array.isArray(protocols)) protocols = [protocols]
 
-    stream.setProtocol(protocol)
+    const { stream: duplexStream, protocol } = await this._newStream(protocols)
+    const stream = new Stream({
+      iterableDuplex: duplexStream,
+      conn: this,
+      direction: 'outbound',
+      protocol,
+      options
+    })
     this._streams.push(stream)
 
     return stream
@@ -151,11 +143,17 @@ class Connection {
 
   /**
    * On an inbound stream opening.
-   * @param {Stream} newStream new muxed+multistream-selected stream
+   * @param {object} options
+   * @param {*} options.stream An Iterable Duplex stream
+   * @param {string} options.protocol The protocol the stream is using
    */
-  onNewStream (newStream) {
-    const stream = new Stream(newStream, this, 'inbound')
-    this._streams.push(stream)
+  onNewStream ({ stream, protocol }) {
+    this._streams.push(new Stream({
+      iterableDuplex: stream,
+      conn: this,
+      direction: 'inbound',
+      protocol
+    }))
   }
 
   /**
@@ -171,7 +169,7 @@ class Connection {
    * @return {Promise}
    */
   async close () {
-    if (this.status === 'closed') {
+    if (this.stat.status === 'closed') {
       return
     }
 
@@ -179,7 +177,7 @@ class Connection {
       return this._closing
     }
 
-    this.status = 'closing'
+    this.stat.status = 'closing'
 
     // Close all streams
     this._closing = this._closeStreams()
@@ -189,7 +187,7 @@ class Connection {
     this._closing = await this._close()
 
     this._stat.timeline.close = Date.now()
-    this.status = 'closed'
+    this.stat.status = 'closed'
   }
 
   /**
