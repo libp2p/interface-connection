@@ -2,6 +2,10 @@
 
 'use strict'
 
+const pipe = require('it-pipe')
+const pair = require('it-pair')
+const { collect } = require('streaming-iterables')
+
 const chai = require('chai')
 const expect = chai.expect
 chai.use(require('dirty-chai'))
@@ -35,11 +39,25 @@ module.exports = (test) => {
       await stream.close()
     })
 
-    it.skip('should be able to use the stream', async () => {
+    it('should be able to use the stream', async () => {
       const protocol = '/echo/0.0.1'
       const stream = await connection.newStream(protocol)
 
-      // TODO
+      const p = pair()
+      const data = [1, 2, 3]
+
+      await pipe(
+        data,
+        p,
+        stream
+      )
+
+      const res = await pipe(
+        stream.source,
+        collect
+      )
+
+      expect(res).to.eql(data)
 
       await stream.close()
     })

@@ -1,6 +1,5 @@
 'use strict'
 
-const abortable = require('abortable-iterator')
 const withIs = require('class-is')
 
 const assert = require('assert')
@@ -17,10 +16,8 @@ class Stream {
    * @param {Connection} properties.conn connection associated with the stream.
    * @param {string} properties.direction direction of the stream startup ("inbound" or "outbound").
    * @param {string} properties.protocol the protocol the stream is using.
-   * @param {object} [properties.options={}] stream options.
-   * @param {AbortSignal} [properties.options.signal] abortable signal.
    */
-  constructor ({ iterableDuplex, conn, direction, protocol, options = {} }) {
+  constructor ({ iterableDuplex, conn, direction, protocol }) {
     assert(direction === 'inbound' || direction === 'outbound', 'direction must be "inbound" or "outbound"')
 
     /**
@@ -59,12 +56,7 @@ class Stream {
      */
     this.protocol = protocol
 
-    /**
-     * Stream options
-     */
-    this._options = options
-
-    this.sink = this._sink.bind(this)
+    this.sink = this._sink()
     this.source = this._source()
   }
 
@@ -92,7 +84,7 @@ class Stream {
 
     return async (source) => {
       try {
-        await this._iterableDuplex.sink(abortable(source, this._options.signal))
+        await this._iterableDuplex.sink(source)
       } catch (err) {
         // Re-throw non-aborted errors
         if (err.type !== 'aborted') throw err
@@ -111,19 +103,17 @@ class Stream {
       throw errCode(new Error('the stream is closed'), 'ERR_STREAM_CLOSED')
     }
 
-    return abortable(this._iterableDuplex.source, this._options.signal)
+    return this._iterableDuplex.source
   }
 
   /**
    * Close a stream
-   * @return {Promise}
+   * @return {void}
    */
-  async close () {
+  close () {
     if (this._stat.timeline.close) {
       return
     }
-
-    await this._iterableDuplex.close()
     this._stat.timeline.close = Date.now()
   }
 }

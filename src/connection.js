@@ -121,11 +121,9 @@ class Connection {
   /**
    * Create a new stream from this connection
    * @param {string[]} protocols intended protocol for the stream
-   * @param {object} [options={}] stream options
-   * @param {AbortSignal} [options.signal] abortable signal
    * @return {Stream} new muxed+multistream-selected stream
    */
-  async newStream (protocols, options = {}) {
+  async newStream (protocols) {
     if (this.stat.status === 'closing') {
       throw errCode(new Error('the connection is being closed'), 'ERR_CONNECTION_BEING_CLOSED')
     }
@@ -141,8 +139,7 @@ class Connection {
       iterableDuplex: duplexStream,
       conn: this,
       direction: 'outbound',
-      protocol,
-      options
+      protocol
     })
     this._streams.push(stream)
 
@@ -179,23 +176,14 @@ class Connection {
 
     this.stat.status = 'closing'
 
-    // Close all streams
-    this._closing = this._closeStreams()
-    await this._closing
-
     // Close raw connection
     this._closing = await this._close()
 
+    // All streams closed
+    this._streams.map((stream) => stream.close())
+
     this._stat.timeline.close = Date.now()
     this.stat.status = 'closed'
-  }
-
-  /**
-   * Close all the streams associated with this connection.
-   * @return {Promise}
-   */
-  _closeStreams () {
-    return Promise.all(this._streams.map((stream) => stream.close()))
   }
 }
 
