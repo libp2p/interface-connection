@@ -31,11 +31,22 @@ module.exports = (test) => {
         expect(connection.stat.timeline.open).to.exist()
         expect(connection.stat.timeline.upgraded).to.exist()
         expect(connection.stat.timeline.close).to.not.exist()
-        // expect(connection.stat.direction).to.exist()
+        expect(connection.stat.direction).to.exist()
+        // Not mandatory data:
         // expect(connection.stat.multiplexer).to.exist()
-        expect(connection.stat.encryption).to.exist()
+        // expect(connection.stat.encryption).to.exist()
         expect(connection.getStreams()).to.eql([])
         expect(connection.tags).to.eql([])
+      })
+
+      it('should get the metadata of an open connection', () => {
+        const stat = connection.stat
+
+        expect(stat.status).to.equal('open')
+        expect(stat.direction).to.exist()
+        expect(stat.timeline.open).to.exist()
+        expect(stat.timeline.upgraded).to.exist()
+        expect(stat.timeline.close).to.not.exist()
       })
 
       it('should return an empty array of streams', () => {
@@ -65,7 +76,6 @@ module.exports = (test) => {
       })
 
       afterEach(async () => {
-        await connection.close()
         await test.teardown()
       })
 
@@ -88,6 +98,37 @@ module.exports = (test) => {
 
         expect(connection.stat.timeline.close).to.exist()
         expect(connection.stat.status).to.equal('closed')
+      })
+
+      it('should fail to create a new stream if the connection is closing', async () => {
+        expect(connection.stat.timeline.close).to.not.exist()
+        connection.close()
+
+        try {
+          const protocol = '/echo/0.0.1'
+          await connection.newStream(protocol)
+        } catch (err) {
+          expect(err).to.exist()
+          return
+        }
+
+        throw new Error('should fail to create a new stream if the connection is closing')
+      })
+
+      it('should fail to create a new stream if the connection is closed', async () => {
+        expect(connection.stat.timeline.close).to.not.exist()
+        await connection.close()
+
+        try {
+          const protocol = '/echo/0.0.1'
+          await connection.newStream(protocol)
+        } catch (err) {
+          expect(err).to.exist()
+          expect(err.code).to.equal('ERR_CONNECTION_CLOSED')
+          return
+        }
+
+        throw new Error('should fail to create a new stream if the connection is closing')
       })
     })
   })

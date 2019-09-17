@@ -22,17 +22,6 @@ The API is presented with both JS and Go primitives, however there is no actual 
 
 [Jacob Heun](https://github.com/jacobheun/)
 
-## Modules that implement the interface
-
-- [js-libp2p-tcp](https://github.com/libp2p/js-libp2p-tcp)
-- [js-libp2p-webrtc-star](https://github.com/libp2p/js-libp2p-webrtc-star)
-- [js-libp2p-websockets](https://github.com/libp2p/js-libp2p-websockets)
-- [js-libp2p-utp](https://github.com/libp2p/js-libp2p-utp)
-- [webrtc-explorer](https://github.com/diasdavid/webrtc-explorer)
-- [js-libp2p-spdy](https://github.com/libp2p/js-libp2p-spdy)
-- [js-libp2p-multiplex](https://github.com/libp2p/js-libp2p-multiplex)
-- [js-libp2p-secio](https://github.com/libp2p/js-libp2p-secio)
-
 ## Badge
 
 Include this badge in your readme if you make a module that is compatible with the `interface-connection` API. You can validate this by running the tests.
@@ -106,7 +95,7 @@ new Connection({
   - `<PeerId> conn.localPeer`
   - `<PeerId> conn.remotePeer`
   - `<Object> conn.stat`
-  - `Promise<Stream> conn.newStream(protocol, [options])`
+  - `Promise<Stream> conn.newStream(Array<protocols>, [options])`
   - `Array<Stream> conn.getStreams()`
   - `Promise<> conn.close()`
 
@@ -154,11 +143,11 @@ Creates a new Connection instance.
 
 #### Create a new stream
 
-- `JavaScript` - `conn.newStream(protocol, options)`
+- `JavaScript` - `conn.newStream(protocols, options)`
 
 Create a new stream within the connection.
 
-`protocol` is the intended protocol to use. Example: `/echo/1.0.0`
+`protocols` is an array of the intended protocol to use (by order of preference). Example: `[/echo/1.0.0]`
 `options` is an object containing the stream options.
 `options.signal` is an [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal).
 
@@ -252,6 +241,7 @@ new Stream({
   iterableDuplex,
   conn,
   direction,
+  protocol,
   options
 })
 ```
@@ -267,29 +257,30 @@ const { Stream } = require('interface-connection')
 
 #### Creating a stream instance
 
-- `JavaScript` - `const stream = new Stream({ iterableDuplex, conn, direction, options })`
+- `JavaScript` - `const stream = new Stream({ iterableDuplex, conn, direction, protocol, options })`
 
 Creates a new Stream instance.
 
 `iterableDuplex` is a streaming iterable duplex object.
 `conn` is a reference to the underlying connection.
 `direction` is a `string` indicating whether the connection is `inbound` or `outbound`.
+`protocol` is a `string` with the protocol that the stream is using.
 `options` is an object containing the stream options.
 `options.signal` is an [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal).
 
-#### Get a connection Source
+#### Get a stream Source
 
 - `JavaScript` - `stream.source`
 
 This getter returns a reference to the connection "source", which is an iterable object that can be consumed.
 
-#### Get a connection data collector
+#### Get a stream data collector
 
 - `JavaScript` - `stream.sink`
 
 This getter returns a reference to the connection "sink", which is an iterator that drains a source. 
 
-#### Close connection
+#### Close stream
 
 - `JavaScript` - `stream.close()`
 
@@ -311,9 +302,9 @@ This property contains the connection associated with this stream.
 
 #### Stat
 
-- `JavaScript` - `conn.stat`
+- `JavaScript` - `stream.stat`
 
-This getter returns an `Object` with the metadata of the connection, as follows:
+This getter returns an `Object` with the metadata of the stream, as follows:
 
 - `timeline`:
 

@@ -26,8 +26,8 @@ module.exports = (test) => {
 
       expect(stream.id).to.exist()
       expect(stream.conn).to.exist()
-      expect(stream._stat.timeline.open).to.exist()
-      expect(stream._stat.timeline.close).to.not.exist()
+      expect(stream.stat.timeline.open).to.exist()
+      expect(stream.stat.timeline.close).to.not.exist()
       expect(stream.tags).to.exist()
 
       expect(stream.protocol).to.equal(protocol)
@@ -46,8 +46,8 @@ module.exports = (test) => {
 
       await stream.close()
 
-      expect(stream._stat.timeline.open).to.exist()
-      expect(stream._stat.timeline.close).to.exist()
+      expect(stream.stat.timeline.open).to.exist()
+      expect(stream.stat.timeline.close).to.exist()
     })
 
     it.skip('should be able to close a stream while sinking', async () => {

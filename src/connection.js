@@ -111,6 +111,14 @@ class Connection {
   }
 
   /**
+   * Get all the streams associated with the connection.
+   * @return {Array<Stream>}
+   */
+  getStreams () {
+    return this._streams
+  }
+
+  /**
    * Create a new stream from this connection
    * @param {string[]} protocols intended protocol for the stream
    * @param {object} [options={}] stream options
@@ -154,14 +162,6 @@ class Connection {
       direction: 'inbound',
       protocol
     }))
-  }
-
-  /**
-   * Get all the streams associated with the connection.
-   * @return {Array<Stream>}
-   */
-  getStreams () {
-    return this._streams
   }
 
   /**

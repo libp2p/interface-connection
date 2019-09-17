@@ -16,7 +16,7 @@ class Stream {
    * @param {*} properties.iterableDuplex streaming iterables duplex object.
    * @param {Connection} properties.conn connection associated with the stream.
    * @param {string} properties.direction direction of the stream startup ("inbound" or "outbound").
-   * @param {string} properties.protocol the protocol the stream us using.
+   * @param {string} properties.protocol the protocol the stream is using.
    * @param {object} [properties.options={}] stream options.
    * @param {AbortSignal} [properties.options.signal] abortable signal.
    */
