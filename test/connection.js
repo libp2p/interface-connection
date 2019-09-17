@@ -2,6 +2,9 @@
 
 'use strict'
 
+const goodbye = require('it-goodbye')
+const { collect } = require('streaming-iterables')
+
 const chai = require('chai')
 const expect = chai.expect
 chai.use(require('dirty-chai'))
@@ -64,6 +67,18 @@ module.exports = (test) => {
         expect(connStreams).to.exist()
         expect(connStreams).to.have.lengthOf(1)
         expect(connStreams[0]).to.equal(stream)
+      })
+
+      it('should be able to add an inbound stream', () => {
+        const s = goodbye({ source: ['hey'], sink: collect })
+        s.close = () => s.sink([])
+
+        connection.onNewStream({ stream: s, protocol: '/echo/0.0.1' })
+
+        const connStreams = connection.getStreams()
+        expect(connStreams).to.exist()
+        expect(connStreams).to.have.lengthOf(1)
+        expect(connStreams[0].protocol).to.equal('/echo/0.0.1')
       })
     })
 
