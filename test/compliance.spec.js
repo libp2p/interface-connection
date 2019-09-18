@@ -17,6 +17,8 @@ describe('compliance tests', () => {
         PeerId.createFromJSON(peers[0]),
         PeerId.createFromJSON(peers[1])
       ])
+      const openStreams = []
+      let streamId = 0
 
       return new Connection({
         localPeer,
@@ -33,14 +35,21 @@ describe('compliance tests', () => {
           multiplexer: '/mplex/6.7.0'
         },
         newStream: (protocols) => {
+          const id = streamId++
           const stream = pair()
+
           stream.close = () => stream.sink([])
+          stream.id = id
+
+          openStreams.push(stream)
+
           return {
             stream,
             protocol: protocols[0]
           }
         },
-        close: () => {}
+        close: () => {},
+        getStreams: () => openStreams
       })
     },
     async teardown () {

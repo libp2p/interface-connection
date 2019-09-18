@@ -4,7 +4,6 @@ const PeerId = require('peer-id')
 const multiaddr = require('multiaddr')
 
 const withIs = require('class-is')
-const Stream = require('./stream')
 
 const assert = require('assert')
 const errCode = require('err-code')
@@ -23,21 +22,23 @@ class Connection {
    * @param {PeerId} properties.remotePeer remote peer-id.
    * @param {function} properties.newStream new stream muxer function.
    * @param {function} properties.close close raw connection function.
-   * @param {Object} properties.stat metadata of the connection.
+   * @param {function} properties.getStreams get streams from muxer function.
+   * @param {object} properties.stat metadata of the connection.
    * @param {string} properties.stat.direction connection establishment direction ("inbound" or "outbound").
-   * @param {Object} properties.stat.timeline connection relevant events timestamp.
+   * @param {object} properties.stat.timeline connection relevant events timestamp.
    * @param {string} properties.stat.timeline.open connection opening timestamp.
    * @param {string} properties.stat.timeline.upgraded connection upgraded timestamp.
    * @param {string} [properties.stat.multiplexer] connection multiplexing identifier.
    * @param {string} [properties.stat.encryption] connection encryption method identifier.
    */
-  constructor ({ localAddr, remoteAddr, localPeer, remotePeer, newStream, close, stat }) {
+  constructor ({ localAddr, remoteAddr, localPeer, remotePeer, newStream, close, getStreams, stat }) {
     assert(multiaddr.isMultiaddr(localAddr), 'localAddr must be an instance of multiaddr')
     assert(multiaddr.isMultiaddr(remoteAddr), 'remoteAddr must be an instance of multiaddr')
     assert(PeerId.isPeerId(localPeer), 'localPeer must be an instance of peer-id')
     assert(PeerId.isPeerId(remotePeer), 'remotePeer must be an instance of peer-id')
     assert(typeof newStream === 'function', 'new stream must be a function')
     assert(typeof close === 'function', 'close must be a function')
+    assert(typeof getStreams === 'function', 'getStreams must be a function')
     assert(stat, 'connection metadata object must be provided')
     assert(stat.direction === 'inbound' || stat.direction === 'outbound', 'direction must be "inbound" or "outbound"')
     assert(stat.timeline, 'connection timeline object must be provided in the stat object')
@@ -92,9 +93,14 @@ class Connection {
     this._close = close
 
     /**
-     * Connection streams
+     * Reference to the getStreams function of the muxer
      */
-    this._streams = []
+    this._getStreams = getStreams
+
+    /**
+     * Connection streams registry
+     */
+    this.registry = new Map()
 
     /**
      * User provided tags
@@ -111,17 +117,17 @@ class Connection {
   }
 
   /**
-   * Get all the streams associated with the connection.
-   * @return {Array<Stream>}
+   * Get all the streams of the muxer.
+   * @return {Array<*>}
    */
-  getStreams () {
-    return this._streams
+  get streams () {
+    return this._getStreams()
   }
 
   /**
    * Create a new stream from this connection
    * @param {string[]} protocols intended protocol for the stream
-   * @return {Stream} new muxed+multistream-selected stream
+   * @return {Promise<object>} with muxed+multistream-selected stream and selected protocol
    */
   async newStream (protocols) {
     if (this.stat.status === 'closing') {
@@ -134,40 +140,41 @@ class Connection {
 
     if (!Array.isArray(protocols)) protocols = [protocols]
 
-    const { stream: duplexStream, protocol } = await this._newStream(protocols)
+    const { stream, protocol } = await this._newStream(protocols)
 
-    return this.addStream({
-      stream: duplexStream,
-      protocol,
-      direction: 'outbound'
-    })
-  }
+    this.addStream(stream, protocol)
 
-  /**
-   * Add an inbound stream when it is opened.
-   * @param {object} options
-   * @param {*} options.stream an Iterable Duplex stream
-   * @param {string} options.protocol the protocol the stream is using
-   * @param {string} [options.direction = 'inbound'] stream establishment direction ("inbound" or "outbound")
-   * @return {Stream} new stream within the connection
-   */
-  addStream ({ stream, protocol, direction = 'inbound' }) {
-    assert(direction === 'inbound' || direction === 'outbound', 'direction must be "inbound" or "outbound"')
-
-    const s = new Stream({
-      iterableDuplex: stream,
-      conn: this,
-      direction,
+    return {
+      stream,
       protocol
-    })
-
-    this._streams.push(s)
-
-    return s
+    }
   }
 
   /**
-   * Close the connection, as well as all its associated streams.
+   * Add a stream when it is opened to the registry.
+   * @param {*} muxedStream a muxed stream
+   * @param {string} protocol the protocol the stream is using
+   * @param {object} metadata metadata of the stream
+   * @return {void}
+   */
+  addStream (muxedStream, protocol, metadata = {}) {
+    // Add metadata for the stream
+    this.registry.set(muxedStream.id, {
+      protocol,
+      ...metadata
+    })
+  }
+
+  /**
+   * Remove stream registry after it is closed.
+   * @param {string} id identifier of the stream
+   */
+  removeStream (id) {
+    this.registry.delete(id)
+  }
+
+  /**
+   * Close the connection.
    * @return {Promise}
    */
   async close () {
@@ -183,9 +190,6 @@ class Connection {
 
     // Close raw connection
     this._closing = await this._close()
-
-    // All streams closed
-    this._streams.map((stream) => stream.close())
 
     this._stat.timeline.close = Date.now()
     this.stat.status = 'closed'

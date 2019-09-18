@@ -2,9 +2,6 @@
 
 'use strict'
 
-const goodbye = require('it-goodbye')
-const { collect } = require('streaming-iterables')
-
 const chai = require('chai')
 const expect = chai.expect
 chai.use(require('dirty-chai'))
@@ -35,7 +32,7 @@ module.exports = (test) => {
         expect(connection.stat.timeline.upgraded).to.exist()
         expect(connection.stat.timeline.close).to.not.exist()
         expect(connection.stat.direction).to.exist()
-        expect(connection.getStreams()).to.eql([])
+        expect(connection.streams).to.eql([])
         expect(connection.tags).to.eql([])
       })
 
@@ -50,32 +47,23 @@ module.exports = (test) => {
       })
 
       it('should return an empty array of streams', () => {
-        const streams = connection.getStreams()
+        const streams = connection.streams
 
         expect(streams).to.eql([])
       })
 
       it('should be able to create a new stream', async () => {
-        const protocol = '/echo/0.0.1'
-        const stream = await connection.newStream(protocol)
-        const connStreams = await connection.getStreams()
+        const protocolToUse = '/echo/0.0.1'
+        const { stream, protocol } = await connection.newStream(protocolToUse)
+
+        expect(protocol).to.equal(protocolToUse)
+
+        const connStreams = await connection.streams
 
         expect(stream).to.exist()
         expect(connStreams).to.exist()
         expect(connStreams).to.have.lengthOf(1)
         expect(connStreams[0]).to.equal(stream)
-      })
-
-      it('should be able to add an inbound stream', () => {
-        const s = goodbye({ source: ['hey'], sink: collect })
-        s.close = () => s.sink([])
-
-        connection.addStream({ stream: s, protocol: '/echo/0.0.1' })
-
-        const connStreams = connection.getStreams()
-        expect(connStreams).to.exist()
-        expect(connStreams).to.have.lengthOf(1)
-        expect(connStreams[0].protocol).to.equal('/echo/0.0.1')
       })
     })
 

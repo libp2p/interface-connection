@@ -16,17 +16,9 @@ The primary goal of this module is to enable developers to pick, swap or upgrade
 
 Publishing a test suite as a module lets multiple modules ensure compatibility since they use the same test suite.
 
-The API is presented with both JS and Go primitives, however there is no actual limitations for it to be extended to any other language, pushing forward the cross compatibility and interop through different stacks.
-
 ## Lead Maintainer
 
 [Jacob Heun](https://github.com/jacobheun/)
-
-## Badge
-
-Include this badge in your readme if you make a module that is compatible with the `interface-connection` API. You can validate this by running the tests.
-
-![](https://raw.githubusercontent.com/diasdavid/interface-connection/master/img/badge.png)
 
 ## Usage
 
@@ -79,6 +71,7 @@ new Connection({
   remotePeer,
   newStream,
   close,
+  getStreams,
   stat: {
     direction,
     timeline: {
@@ -95,9 +88,10 @@ new Connection({
   - `<PeerId> conn.localPeer`
   - `<PeerId> conn.remotePeer`
   - `<Object> conn.stat`
-  - `Promise<Stream> conn.newStream(Array<protocols>)`
-  - `<Stream> conn.addStream({ stream, protocol, direction })`
-  - `Array<Stream> conn.getStreams()`
+  - `<Map> conn.registry`
+  - `Array<Stream> conn.streams`
+  - `Promise<object> conn.newStream(Array<protocols>)`
+  - `<Stream> conn.addStream(stream, protocol, metadata)`
   - `Promise<> conn.close()`
 
 It can be obtained as follows:
@@ -112,6 +106,7 @@ const conn = new Connection({
   remotePeer,
   newStream,
   close: err => maConn.close(err),
+  getStreams,
   stats: {
     direction: 'outbound',
     timeline: {
@@ -126,7 +121,7 @@ const conn = new Connection({
 
 #### Creating a connection instance
 
-- `JavaScript` - `const conn = new Connection({localAddr, remoteAddr, localPeer, remotePeer, newStream, close, direction, multiplexer, encryption})`
+- `JavaScript` - `const conn = new Connection({localAddr, remoteAddr, localPeer, remotePeer, newStream, close, getStreams, direction, multiplexer, encryption})`
 
 Creates a new Connection instance.
 
@@ -136,6 +131,7 @@ Creates a new Connection instance.
 `remotePeer` is the [PeerId](https://github.com/libp2p/js-peer-id) of the remote peer.
 `newStream` is the `function` responsible for getting a new muxed+multistream-selected stream.
 `close` is the `function` responsible for closing the raw connection.
+`getStreams` is the `function` responsible for getting the streams muxed within the connection.
 `stats` is an `object` with the metadata of the connection. It contains:
 - `direction` is a `string` indicating whether the connection is `inbound` or `outbound`.
 - `timeline` is an `object` with the relevant events timestamps of the connection (`open`, `upgraded` and `closed`; the `closed` will be added when the connection is closed).
@@ -150,33 +146,32 @@ Create a new stream within the connection.
 
 `protocols` is an array of the intended protocol to use (by order of preference). Example: `[/echo/1.0.0]`
 
-It returns a `Promise` with the instance of the created `Stream`.
+It returns a `Promise` with an object with the following properties:
 
-#### Add an inbound stream
+```js
+{
+  stream,
+  protocol
+}
+```
 
-- `JavaScript` - `conn.addStream({ stream, protocol, direction })`
+The stream property contains the muxed stream, while the protocol contains the protocol codec used by the stream.
 
-Add a new inbound stream to the connection.
+#### Add stream metadata
 
-`stream` is an Iterable Duplex stream object.
+- `JavaScript` - `conn.addStream(stream, protocol, metadata)`
+
+Add a new stream to the connection registry.
+
+`stream` is a muxed stream.
 `protocol` is the string codec for the protocol used by the stream. Example: `/echo/1.0.0`
-`direction` is a string indicating whether the stream is `inbound` or `outbound`.
-
-It returns the instance of the created `Stream`.
-
-#### Get the connection Streams
-
-- `JavaScript` - `conn.getStreams()`
-
-Get all the streams associated with this connection.
-
-It returns an `Array` with the instance of all the streams created in this connection.
+`metadata` is an object containing the stream metadata (such as its `tags`).
 
 #### Close connection
 
 - `JavaScript` - `conn.close()`
 
-This method closes the connection to the remote peer, as well as all the streams running in the connection.
+This method closes the connection to the remote peer, as well as all the streams muxed within the connection.
 
 It returns a `Promise`.
 
@@ -185,6 +180,12 @@ It returns a `Promise`.
 - `JavaScript` - `conn.id`
 
 This property contains the identifier of the connection.
+
+#### Connection streams registry
+
+- `JavaScript` - `conn.registry`
+
+This property contains a map with the muxed streams indexed by their id. This registry contains the protocol used by the stream, as well as its metadata.
 
 #### Remote peer
 
@@ -197,6 +198,14 @@ This property contains the remote `peer-id` of this connection.
 - `JavaScript` - `conn.localPeer`
 
 This property contains the local `peer-id` of this connection.
+
+#### Get the connection Streams
+
+- `JavaScript` - `conn.streams`
+
+This getter returns all the muxed streams within the connection.
+
+It returns an `Array`.
 
 #### Remote address
 
@@ -241,83 +250,3 @@ This property contains the encryption method being used in the connection. It is
 - `JavaScript` - `conn.tags`
 
 This property contains an array of tags associated with the connection. New tags can be pushed to this array during the connection's lifetime.
-
-### Stream
-
-A valid stream (one that follows this abstraction), must implement the following API:
-
-- type: `Stream`
-```js
-new Stream({
-  iterableDuplex,
-  conn,
-  direction,
-  protocol
-})
-```
-  - `stream.source` - iterable object
-  - `stream.sink` - Function
-  - `stream.close()`
-
-It can be obtained as follows:
-
-```js
-const { Stream } = require('interface-connection')
-```
-
-#### Creating a stream instance
-
-- `JavaScript` - `const stream = new Stream({ iterableDuplex, conn, direction, protocol })`
-
-Creates a new Stream instance.
-
-`iterableDuplex` is a streaming iterable duplex object.
-`conn` is a reference to the underlying connection.
-`direction` is a `string` indicating whether the connection is `inbound` or `outbound`.
-`protocol` is a `string` with the protocol that the stream is using.
-
-#### Get a stream Source
-
-- `JavaScript` - `stream.source`
-
-This getter returns a reference to the connection "source", which is an iterable object that can be consumed.
-
-#### Get a stream data collector
-
-- `JavaScript` - `stream.sink`
-
-This getter returns a reference to the connection "sink", which is an iterator that drains a source. 
-
-#### Close stream
-
-- `JavaScript` - `stream.close()`
-
-This method closes a stream with the other peer.
-
-It returns a `Promise`.
-
-#### Stream identifier
-
-- `JavaScript` - `stream.id`
-
-This property contains the identifier of the stream.
-
-#### Stream associated connection
-
-- `JavaScript` - `stream.connection`
-
-This property contains the connection associated with this stream.
-
-#### Stat
-
-- `JavaScript` - `stream.stat`
-
-This getter returns an `Object` with the metadata of the stream, as follows:
-
-- `timeline`:
-
-This property contains an object with the `open` and `close` timestamps of the stream. The `close` timestamp is `undefined` until the stream is closed.
-
-- `direction`:
-
-This property contains the direction of the peer in the stream. It can be `inbound` or `outbound`.
