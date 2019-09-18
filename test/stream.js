@@ -71,5 +71,36 @@ module.exports = (test) => {
       expect(stream.stat.timeline.open).to.exist()
       expect(stream.stat.timeline.close).to.exist()
     })
+
+    it('should remove streams from connection if streams are closed', async () => {
+      // Zero streams when connection established
+      let openenedStreams = connection.getStreams()
+      expect(openenedStreams).to.have.lengthOf(0)
+
+      // Open 3 streams
+      const [stream1, stream2, stream3] = await Promise.all([
+        connection.newStream('/echo/0.0.1'),
+        connection.newStream('/echo/0.0.2'),
+        connection.newStream('/echo/0.0.3')
+      ])
+
+      openenedStreams = connection.getStreams()
+      expect(openenedStreams).to.have.lengthOf(3)
+
+      // Close 1 stream
+      await stream1.close()
+
+      openenedStreams = connection.getStreams()
+      expect(openenedStreams).to.have.lengthOf(2)
+
+      // Close remaining 2 streams
+      await Promise.all([
+        stream2.close(),
+        stream3.close()
+      ])
+
+      openenedStreams = connection.getStreams()
+      expect(openenedStreams).to.have.lengthOf(0)
+    })
   })
 }

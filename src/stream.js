@@ -115,6 +115,10 @@ class Stream {
       return
     }
     this._stat.timeline.close = Date.now()
+
+    // remove stream from connection
+    const streams = this.conn.getStreams()
+    streams.splice(streams.findIndex(s => s.id === this.id), 1)
   }
 }
 
