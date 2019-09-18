@@ -95,7 +95,8 @@ new Connection({
   - `<PeerId> conn.localPeer`
   - `<PeerId> conn.remotePeer`
   - `<Object> conn.stat`
-  - `Promise<Stream> conn.newStream(Array<protocols>, [options])`
+  - `Promise<Stream> conn.newStream(Array<protocols>)`
+  - `<Stream> conn.addStream({ stream, protocol, direction })`
   - `Array<Stream> conn.getStreams()`
   - `Promise<> conn.close()`
 
@@ -143,15 +144,25 @@ Creates a new Connection instance.
 
 #### Create a new stream
 
-- `JavaScript` - `conn.newStream(protocols, options)`
+- `JavaScript` - `conn.newStream(protocols)`
 
 Create a new stream within the connection.
 
 `protocols` is an array of the intended protocol to use (by order of preference). Example: `[/echo/1.0.0]`
-`options` is an object containing the stream options.
-`options.signal` is an [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal).
 
 It returns a `Promise` with the instance of the created `Stream`.
+
+#### Add an inbound stream
+
+- `JavaScript` - `conn.addStream({ stream, protocol, direction })`
+
+Add a new inbound stream to the connection.
+
+`stream` is an Iterable Duplex stream object.
+`protocol` is the string codec for the protocol used by the stream. Example: `/echo/1.0.0`
+`direction` is a string indicating whether the stream is `inbound` or `outbound`.
+
+It returns the instance of the created `Stream`.
 
 #### Get the connection Streams
 
@@ -241,8 +252,7 @@ new Stream({
   iterableDuplex,
   conn,
   direction,
-  protocol,
-  options
+  protocol
 })
 ```
   - `stream.source` - iterable object
@@ -257,7 +267,7 @@ const { Stream } = require('interface-connection')
 
 #### Creating a stream instance
 
-- `JavaScript` - `const stream = new Stream({ iterableDuplex, conn, direction, protocol, options })`
+- `JavaScript` - `const stream = new Stream({ iterableDuplex, conn, direction, protocol })`
 
 Creates a new Stream instance.
 
@@ -265,8 +275,6 @@ Creates a new Stream instance.
 `conn` is a reference to the underlying connection.
 `direction` is a `string` indicating whether the connection is `inbound` or `outbound`.
 `protocol` is a `string` with the protocol that the stream is using.
-`options` is an object containing the stream options.
-`options.signal` is an [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal).
 
 #### Get a stream Source
 

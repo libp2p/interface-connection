@@ -135,30 +135,35 @@ class Connection {
     if (!Array.isArray(protocols)) protocols = [protocols]
 
     const { stream: duplexStream, protocol } = await this._newStream(protocols)
-    const stream = new Stream({
-      iterableDuplex: duplexStream,
-      conn: this,
-      direction: 'outbound',
-      protocol
-    })
-    this._streams.push(stream)
 
-    return stream
+    return this.addStream({
+      stream: duplexStream,
+      protocol,
+      direction: 'outbound'
+    })
   }
 
   /**
-   * On an inbound stream opening.
+   * Add an inbound stream when it is opened.
    * @param {object} options
-   * @param {*} options.stream An Iterable Duplex stream
-   * @param {string} options.protocol The protocol the stream is using
+   * @param {*} options.stream an Iterable Duplex stream
+   * @param {string} options.protocol the protocol the stream is using
+   * @param {string} [options.direction = 'inbound'] stream establishment direction ("inbound" or "outbound")
+   * @return {Stream} new stream within the connection
    */
-  onNewStream ({ stream, protocol }) {
-    this._streams.push(new Stream({
+  addStream ({ stream, protocol, direction = 'inbound' }) {
+    assert(direction === 'inbound' || direction === 'outbound', 'direction must be "inbound" or "outbound"')
+
+    const s = new Stream({
       iterableDuplex: stream,
       conn: this,
-      direction: 'inbound',
+      direction,
       protocol
-    }))
+    })
+
+    this._streams.push(s)
+
+    return s
   }
 
   /**

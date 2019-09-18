@@ -35,9 +35,6 @@ module.exports = (test) => {
         expect(connection.stat.timeline.upgraded).to.exist()
         expect(connection.stat.timeline.close).to.not.exist()
         expect(connection.stat.direction).to.exist()
-        // Not mandatory data:
-        // expect(connection.stat.multiplexer).to.exist()
-        // expect(connection.stat.encryption).to.exist()
         expect(connection.getStreams()).to.eql([])
         expect(connection.tags).to.eql([])
       })
@@ -73,7 +70,7 @@ module.exports = (test) => {
         const s = goodbye({ source: ['hey'], sink: collect })
         s.close = () => s.sink([])
 
-        connection.onNewStream({ stream: s, protocol: '/echo/0.0.1' })
+        connection.addStream({ stream: s, protocol: '/echo/0.0.1' })
 
         const connStreams = connection.getStreams()
         expect(connStreams).to.exist()
