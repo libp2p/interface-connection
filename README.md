@@ -91,6 +91,7 @@ new Connection({
   - `<Map> conn.registry`
   - `Array<Stream> conn.streams`
   - `Promise<object> conn.newStream(Array<protocols>)`
+  - `<void> conn.removeStream(id)`
   - `<Stream> conn.addStream(stream, protocol, metadata)`
   - `Promise<> conn.close()`
 
@@ -159,13 +160,22 @@ The stream property contains the muxed stream, while the protocol contains the p
 
 #### Add stream metadata
 
-- `JavaScript` - `conn.addStream(stream, protocol, metadata)`
+- `JavaScript` - `conn.addStream(stream, { protocol, ...metadata })`
 
 Add a new stream to the connection registry.
 
 `stream` is a muxed stream.
 `protocol` is the string codec for the protocol used by the stream. Example: `/echo/1.0.0`
-`metadata` is an object containing the stream metadata (such as its `tags`).
+`metadata` is an object containing any additional, optional, stream metadata that you wish to track (such as its `tags`).
+
+#### Remove a from the registry
+
+- `JavaScript` - `conn.removeStream(id)`
+
+Removes the stream with the given id from the connection registry.
+
+`id` is the unique id of the stream for this connection.
+
 
 #### Close connection
 

@@ -153,11 +153,12 @@ class Connection {
   /**
    * Add a stream when it is opened to the registry.
    * @param {*} muxedStream a muxed stream
-   * @param {string} protocol the protocol the stream is using
-   * @param {object} metadata metadata of the stream
+   * @param {object} properties the stream properties to be registered
+   * @param {string} properties.protocol the protocol used by the stream
+   * @param {object} properties.metadata metadata of the stream
    * @return {void}
    */
-  addStream (muxedStream, protocol, metadata = {}) {
+  addStream (muxedStream, { protocol, metadata = {} }) {
     // Add metadata for the stream
     this.registry.set(muxedStream.id, {
       protocol,
